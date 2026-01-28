@@ -12,11 +12,22 @@ def cargar_catalogo_aridos():
     try:
         df = pd.read_csv(URL_ARIDOS)
         df = df.dropna(subset=['Nombre del Árido'])
+        
+        # Renombrar solo las columnas de tamices (granulometría)
+        # Las columnas de propiedades mantienen sus nombres originales
         df = df.rename(columns=MAPEO_COLUMNAS_EXCEL)
-        cols_numericas = ['Densidad Real Seca-DRS', 'Absorción de Agua (%)'] + [t for t in TAMICES_ASTM if t in df.columns]
+        
+        # Convertir columnas numéricas
+        cols_numericas = ['Densidad Real Seca-DRS', 'Absorción de Agua (%)']
+        # Agregar tamices ASTM que existan en el DataFrame
+        for tamiz in TAMICES_ASTM:
+            if tamiz in df.columns:
+                cols_numericas.append(tamiz)
+        
         for col in cols_numericas:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+        
         return df
     except Exception as e:
         st.error(f"Error cargando base de datos: {e}")
