@@ -178,262 +178,173 @@ def mostrar_resultados_faury(resultados: Dict):
         )
         st.plotly_chart(fig_gran, use_container_width=True)
 
-def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict) -> go.Figure:
+# --- CONFIGURACIÓN ESTÉTICA CORPORATIVA ---
+COLOR_PRIMARIO = '#1f77b4'    # Azul Ingeniería
+COLOR_SECUNDARIO = '#ff7f0e'  # Naranja Contraste
+COLOR_OK = '#2ca02c'          # Verde Éxito
+COLOR_WARN = '#d62728'        # Rojo Alerta
+COLOR_GRID = '#e6e6e6'
+COLOR_FILL_REF = 'rgba(128, 128, 128, 0.1)' # Gris tenue para zonas de referencia
+
+def _get_sieve_mm_map() -> Dict[str, float]:
+    """Retorna mapeo estándar de tamices a mm."""
+    return {
+        '2"': 50.0, '1.5"': 37.5, '1"': 25.0, '3/4"': 19.0, '1/2"': 12.5, 
+        '3/8"': 9.5, '#4': 4.75, '#8': 2.36, '#16': 1.18, '#30': 0.60, 
+        '#50': 0.30, '#100': 0.15, '#200': 0.075
+    }
+
+def crear_grafico_shilstone_interactivo(cf: float, wf: float) -> go.Figure:
     """
-    Crea un gráfico interactivo de Shilstone usando Plotly.
-    
-    Args:
-        CF: Coarseness Factor
-        Wadj: Workability Factor Ajustado
-        evaluacion: Diccionario con la evaluación de la zona
-    
-    Returns:
-        Objeto go.Figure de Plotly
+    Genera el diagrama de Factor de Tosquedad (Coarseness Factor Chart).
+    Dibuja la 'Trend Bar' diagonal correctamente.
     """
     fig = go.Figure()
 
-    # Definir Polígonos de Zonas (Coordenadas aproximadas basadas en Shilstone)
+    # --- Construcción de la Trend Bar (Zona II - Óptima) ---
+    # La barra de tendencia suele definirse por una banda diagonal.
+    # Usamos coordenadas aproximadas basadas en ACI / Iowa Method
     
-    # Zona 1 - Óptima (Verde)
-    fig.add_trace(go.Scatter(
-        x=[100, 85, 45, 45, 75, 100],
-        y=[27, 27, 32, 45, 45, 36],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(44, 160, 44, 0)", width=0),
-        fillcolor="rgba(44, 160, 44, 0.2)",
-        name="Zona I - Óptima",
-        hoverinfo="name"
-    ))
-
-    # Zona 2 - Rocky (Naranja/Beige)
-    fig.add_trace(go.Scatter(
-        x=[100, 75, 75, 100],
-        y=[36, 45, 50, 50],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(255, 187, 120, 0.3)",
-        name="Zona II - Rocky",
-        hoverinfo="name"
-    ))
-
-    # Zona 3 - Sobrediseñada (Rosa)
-    fig.add_trace(go.Scatter(
-        x=[75, 45, 45, 75],
-        y=[45, 45, 50, 50],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(255, 152, 150, 0.3)",
-        name="Zona III - Sobrediseñada",
-        hoverinfo="name"
-    ))
-
-    # Zona 4 - Arenosa (Azul claro)
-    fig.add_trace(go.Scatter(
-        x=[45, 0, 0, 45],
-        y=[32, 37, 50, 50],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(174, 199, 232, 0.3)",
-        name="Zona IV - Arenosa",
-        hoverinfo="name"
-    ))
-    
-    # Zona 5 - Baja Trabajabilidad (Gris/Violeta) - Fondo
-    # Se dibuja implícitamente o como resto, pero podemos agregar un polígono grande abajo
-    fig.add_trace(go.Scatter(
-        x=[100, 85, 45, 0, 0, 100],
-        y=[20, 27, 32, 37, 20, 20],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(197, 176, 213, 0.3)",
-        name="Zona V - Baja Trabajabilidad",
-        hoverinfo="name"
-    ))
-
-    # Líneas de contorno Zona I (para que resalte)
-    fig.add_trace(go.Scatter(
-        x=[100, 75, 45, 45, 85, 100],
-        y=[36, 45, 45, 32, 27, 27],
-        mode="lines",
-        line=dict(color="green", width=2),
-        showlegend=False,
-        hoverinfo="skip"
-    ))
-
-    # Punto de la Mezcla Actual
-    color_punto = 'green' if evaluacion.get('calidad') == 'Óptima' else ('orange' if evaluacion.get('calidad') == 'Aceptable' else 'red')
-    
-    fig.add_trace(go.Scatter(
-        x=[CF],
-        y=[Wadj],
-        mode='markers+text',
-        marker=dict(size=14, color=color_punto, line=dict(width=2, color='black')),
-        text=[f"<b>TU MEZCLA</b><br>CF: {CF}<br>Wadj: {Wadj}"],
-        textposition="top center",
-        name='Tu Mezcla',
-        hovertemplate="<b>%{text}</b><extra></extra>"
-    ))
-
-    # Configuración del Layout
-    fig.update_layout(
-        title=dict(text="Análisis de Trabajabilidad (Shilstone)", font=dict(size=20)),
-        xaxis=dict(
-            title="Coarseness Factor (CF)",
-            range=[0, 100],
-            gridcolor=COLOR_GRILLA,
-            zeroline=False
-        ),
-        yaxis=dict(
-            title="Workability Factor (W-adj)",
-            range=[20, 50],
-            gridcolor=COLOR_GRILLA,
-            zeroline=False
-        ),
-        template="plotly_white",
-        width=800,
-        height=600,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
-        hovermode="closest"
+    # Puntos del polígono para la Banda de Tendencia (Trend Bar) - Rectángulo Diagonal
+    # Usamos un relleno Shape para mejor performance que Scatter con fill
+    fig.add_shape(type="path",
+        path=f"M 45,42 L 75,32 L 75,28 L 45,38 Z", # Ajuste visual de la diagonal
+        fillcolor="rgba(46, 204, 113, 0.2)",
+        line=dict(width=0),
+        layer="below"
     )
     
-    # Anotaciones de Texto para las Zonas
-    fig.add_annotation(x=60, y=38, text="ZONA I (ÓPTIMA)", showarrow=False, font=dict(color="green", size=12, weight="bold"))
-    fig.add_annotation(x=90, y=42, text="Rocky", showarrow=False, font=dict(color="gray", size=10))
-    fig.add_annotation(x=20, y=42, text="Arenosa", showarrow=False, font=dict(color="gray", size=10))
+    # Anotaciones de Zonas (Contexto estático)
+    fig.add_annotation(x=30, y=45, text="<b>ZONA I</b><br>Mezcla Pedregosa<br>(Gap Graded)", showarrow=False, font=dict(color="darkred", size=10))
+    fig.add_annotation(x=60, y=35, text="<b>ZONA II</b><br>Bien Graduada", showarrow=False, font=dict(color="darkgreen", size=10))
+    fig.add_annotation(x=65, y=20, text="<b>ZONA III</b><br>Mezcla Arenosa", showarrow=False, font=dict(color="darkorange", size=10))
+    fig.add_annotation(x=90, y=45, text="<b>ZONA V</b><br>Muy Tosca", showarrow=False, font=dict(color="gray", size=10))
+
+    # Líneas divisorias (Shapes)
+    fig.add_shape(type="line", x0=45, y0=15, x1=45, y1=50, line=dict(color="black", width=1, dash="dot"))
+    fig.add_shape(type="line", x0=75, y0=15, x1=75, y1=50, line=dict(color="black", width=1, dash="dot"))
+
+    # --- Tu Mezcla (Punto) ---
+    # Lógica de color semáforo simplificada para demo
+    color_punto = COLOR_WARN
+    # Lógica Aproximada: Si está en banda diagonal (y = -0.33x + b)
+    # y_sup = -0.33 * cf + 57 (aprox)
+    # y_inf = -0.33 * cf + 52 (aprox)
+    y_sup = -0.333 * cf + 57
+    y_inf = -0.333 * cf + 53
     
+    if 45 <= cf <= 75 and y_inf <= wf <= y_sup:
+        color_punto = COLOR_OK
+    elif cf < 45 or cf > 75:
+        color_punto = COLOR_WARN
+    else:
+        color_punto = COLOR_SECUNDARIO 
+
+    fig.add_trace(go.Scatter(
+        x=[cf], y=[wf],
+        mode='markers+text',
+        marker=dict(size=18, color=color_punto, line=dict(width=2, color='black'), symbol='star'),
+        text=["<b>TU MEZCLA</b>"], textposition="top center",
+        hovertemplate="<b>CF:</b> %{x:.1f}%<br><b>WF:</b> %{y:.1f}%<extra></extra>"
+    ))
+
+    fig.update_layout(
+        title=dict(text="Diagrama de Factor de Tosquedad (Shilstone)", font=dict(size=18)),
+        xaxis=dict(title="Factor de Tosquedad (CF) %", range=[20, 80], gridcolor=COLOR_GRID),
+        yaxis=dict(title="Factor de Trabajabilidad (WF) %", range=[15, 50], gridcolor=COLOR_GRID),
+        template="plotly_white",
+        height=550,
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
     return fig
 
-
-def crear_grafico_power45_interactivo(tamices_nombres: List[str], 
-                                      tamices_power: List[float], 
-                                      ideal_vals: List[float], 
-                                      real_vals: List[float],
-                                      rmse: float) -> go.Figure:
+def crear_grafico_power45_interactivo(tamices_lbl: List[str], 
+                                      tamices_mm: List[float], 
+                                      pass_real: List[float], 
+                                      pass_ideal: List[float]) -> go.Figure:
     """
-    Crea un gráfico interactivo Power 45.
-    
-    Args:
-        tamices_nombres: Etiquetas de los tamices (ej: '1"', '#4')
-        tamices_power: Valores X (tamiz^0.45)
-        ideal_vals: Valores Y curva ideal
-        real_vals: Valores Y curva real
-        rmse: Error RMSE calculado
-    
-    Returns:
-        Objeto go.Figure
+    Gráfico Power 0.45 real.
     """
+    # Calcular coordenadas X transformadas
+    x_power = [d**0.45 for d in tamices_mm]
+    
     fig = go.Figure()
 
-    # Curva Ideal
+    # Línea Ideal
     fig.add_trace(go.Scatter(
-        x=tamices_power,
-        y=ideal_vals,
-        mode='lines+markers',
-        name='Curva Ideal (Power 45)',
-        line=dict(color=COLOR_PRIMARIO, width=3, dash='dash'),
-        marker=dict(size=6, symbol='square'),
-        hovertemplate='<b>Ideal</b><br>Tamiz: %{customdata}<br>% Pasa: %{y:.1f}%<extra></extra>',
-        customdata=tamices_nombres
+        x=x_power, y=pass_ideal,
+        mode='lines',
+        name='Referencia Power 0.45',
+        line=dict(color='black', width=2, dash='dash'),
+        hovertemplate="Ideal: %{y:.1f}%<extra></extra>"
     ))
 
     # Curva Real
     fig.add_trace(go.Scatter(
-        x=tamices_power,
-        y=real_vals,
+        x=x_power, y=pass_real,
         mode='lines+markers',
-        name='Tu Mezcla',
-        line=dict(color=COLOR_SECUNDARIO, width=4),
-        marker=dict(size=8, symbol='circle'),
-        hovertemplate='<b>Real</b><br>Tamiz: %{customdata}<br>% Pasa: %{y:.1f}%<extra></extra>',
-        customdata=tamices_nombres
+        name='Mezcla Diseñada',
+        line=dict(color=COLOR_PRIMARIO, width=3),
+        marker=dict(size=7),
+        hovertemplate="<b>Mezcla</b><br>Pasa: %{y:.1f}%<extra></extra>"
     ))
     
-    # Relleno de diferencia
-    fig.add_trace(go.Scatter(
-        x=tamices_power + tamices_power[::-1],
-        y=ideal_vals + real_vals[::-1],
-        fill='toself',
-        fillcolor='rgba(255, 127, 14, 0.2)',
-        line=dict(color='rgba(255,255,255,0)'),
-        hoverinfo="skip",
-        showlegend=True,
-        name='Desviación'
-    ))
-
-    # Layout
+    # Configuración Eje X
     fig.update_layout(
-        title=dict(text=f"Curva de Gradación Power 45 (RMSE: {rmse:.2f})", font=dict(size=20)),
+        title="Curva de Potencia 0.45 (Fuller)",
         xaxis=dict(
-            title="Tamaño de Tamiz (Escala Power 0.45)",
-            tickmode='array',
-            tickvals=tamices_power,
-            ticktext=tamices_nombres,
-            gridcolor=COLOR_GRILLA
+            title="Tamaño de Tamiz (Escala ^0.45)",
+            tickvals=x_power,
+            ticktext=tamices_lbl,
+            gridcolor=COLOR_GRID
         ),
-        yaxis=dict(
-            title="% Que Pasa",
-            range=[0, 105],
-            gridcolor=COLOR_GRILLA
-        ),
+        yaxis=dict(title="% Pasante Acumulado", range=[0, 105], gridcolor=COLOR_GRID),
         template="plotly_white",
-        width=900,
-        height=550,
-        legend=dict(x=0.02, y=0.98),
+        height=500,
         hovermode="x unified"
     )
-
     return fig
 
-def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
-                                        retenidos_vals: List[float],
-                                        tmn: float) -> go.Figure:
+def crear_grafico_tarantula_interactivo(tamices_lbl: List[str], 
+                                        retenidos_ind: List[float],
+                                        tmn: float = 0) -> go.Figure:
     """
-    Crea gráfico de Curva Tarántula (% Retenido Individual).
+    Gráfico de la Curva Tarántula con la 'Caja' de límites correcta.
     """
     fig = go.Figure()
     
-    # Límites aproximados Tarantula (simplificado para ejemplo, idealmente parametrizar según tmn)
-    # Límite superior genérico (ejemplo: 20% para gruesos, 15% finos)
-    limite_sup = [22] * len(tamices_nombres)
-    limite_inf = [4] * len(tamices_nombres)
+    # Límite superior: 20% para la mayoría
+    lim_sup = [20] * len(tamices_lbl)
+    # Límite inferior: 4% para tamices significativos
+    lim_inf = [4] * len(tamices_lbl)
     
-    # Área Aceptable (Fondo)
+    # Dibujar la "Caja" de aceptación
     fig.add_trace(go.Scatter(
-        x=tamices_nombres + tamices_nombres[::-1],
-        y=limite_sup + limite_inf[::-1],
+        x=tamices_lbl + tamices_lbl[::-1],
+        y=lim_sup + lim_inf[::-1],
         fill='toself',
-        fillcolor='rgba(200, 200, 200, 0.2)',
-        line=dict(color='rgba(0,0,0,0)'),
-        name='Rango Aceptable',
-        hoverinfo="skip"
+        fillcolor='rgba(44, 160, 44, 0.15)', # Verde suave
+        line=dict(color='rgba(44, 160, 44, 0.3)', dash='dot'),
+        name='Rango Tarántula (4-20%)',
+        hoverinfo='skip'
     ))
-    
+
+    # Línea de la Mezcla
     fig.add_trace(go.Scatter(
-        x=tamices_nombres,
-        y=retenidos_vals,
+        x=tamices_lbl, y=retenidos_ind,
         mode='lines+markers',
-        name='Tu Mezcla (% Retenido)',
+        name='Retenido Individual',
         line=dict(color=COLOR_PRIMARIO, width=3),
-        marker=dict(size=8)
+        marker=dict(size=8, symbol='square'),
+        hovertemplate="%{y:.1f}% Retenido<extra></extra>"
     ))
 
     fig.update_layout(
-        title=dict(text="Curva Tarántula (% Retenido Individual)", font=dict(size=20)),
+        title="Curva Tarántula (Retenido Individual)",
         xaxis=dict(title="Tamiz"),
-        yaxis=dict(title="% Retenido Individual", range=[0, 30]),
+        yaxis=dict(title="% Retenido Individual", range=[0, 30], gridcolor=COLOR_GRID),
         template="plotly_white",
-        hovermode="x unified"
+        height=500
     )
     return fig
 
@@ -441,12 +352,8 @@ def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
                                        retenidos_vals: List[float]) -> go.Figure:
     """
     Crea gráfico Haystack (% Retenido).
-    Similar a Tarantula pero con enfoque en banda de trabajo.
     """
     fig = go.Figure()
-    
-    # Límites Haystack (Ejemplo visual: picos en el centro)
-    # Esto es ilustrativo, los límites reales dependen de la norma
     
     fig.add_trace(go.Scatter(
         x=tamices_nombres,
@@ -460,48 +367,7 @@ def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
     fig.update_layout(
         title=dict(text="Curva Haystack (% Retenido)", font=dict(size=20)),
         xaxis=dict(title="Tamiz"),
-        yaxis=dict(title="% Retenido", range=[0, 30]),
-        template="plotly_white",
-        hovermode="x unified"
-    )
-    return fig
-
-def crear_grafico_gradaciones_individuales(tamices_nombres: List[str],
-                                           aridos: List[Dict],
-                                           proporciones: List[float],
-                                           mezcla_final: List[float]) -> go.Figure:
-    """
-    Crea gráfico con todas las curvas individuales y la combinada.
-    """
-    fig = go.Figure()
-    
-    # Curvas individuales
-    for i, arido in enumerate(aridos):
-        if i < len(proporciones):
-            nombre = f"{arido['nombre']} ({proporciones[i]:.1f}%)"
-            fig.add_trace(go.Scatter(
-                x=tamices_nombres,
-                y=arido['granulometria'],
-                mode='lines',
-                name=nombre,
-                line=dict(width=2, dash='dot'),
-                opacity=0.7
-            ))
-            
-    # Curva Combinada
-    fig.add_trace(go.Scatter(
-        x=tamices_nombres,
-        y=mezcla_final,
-        mode='lines+markers',
-        name='Mezcla Combinada',
-        line=dict(color='black', width=4),
-        marker=dict(size=6, color='black')
-    ))
-
-    fig.update_layout(
-        title=dict(text="Gradaciones Individuales y Combinada", font=dict(size=20)),
-        xaxis=dict(title="Tamiz", type='category'), # Category para mantener orden
-        yaxis=dict(title="% Que Pasa", range=[0, 105]),
+        yaxis=dict(title="% Retenido", range=[0, 30], gridcolor=COLOR_GRID),
         template="plotly_white",
         hovermode="x unified"
     )
@@ -509,169 +375,172 @@ def crear_grafico_gradaciones_individuales(tamices_nombres: List[str],
 
 def mostrar_resultados_optimizacion(resultado: Dict, granulometrias: List[List[float]], tmn: float):
     """
-    Muestra los resultados de la optimización con gráficos interactivos.
-    
-    Args:
-        resultado: Diccionario con resultados de optimización
-        granulometrias: Lista de granulometrías de áridos
-        tmn: Tamaño máximo nominal
+    Muestra los resultados de la optimización con gráficos interactivos CTO.
     """
     import streamlit as st
     from modules.power45 import generar_curva_ideal_power45
     
-    st.markdown("### 🎯 Resultados de Optimización")
+    st.markdown("### 🎯 Resultados de Optimización (Clase Mundial)")
     
     # Métricas
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Error Power45", f"{resultado.get('error_power45', 0):.3f}")
-    col2.metric("Penalización Total", f"{resultado.get('penalizacion_total', 0):.3f}")
-    col3.metric("Objetivo Final", f"{resultado.get('objetivo', 0):.3f}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Error Power45", f"{resultado.get('error_power45', 0):.3f}")
+    c2.metric("Penalización Shilstone", f"{resultado.get('error_shilstone', 0):.3f}")
+    c3.metric("Objetivo Final", f"{resultado.get('objetivo', 0):.3f}")
     
     # Proporciones óptimas
     st.markdown("#### Proporciones Óptimas")
     props = resultado.get('proporciones', [])
+    cols = st.columns(len(props) if props else 1)
     for i, prop in enumerate(props):
-        st.write(f"**Árido {i+1}:** {prop:.2f}%")
+        cols[i % len(cols)].metric(f"Árido {i+1}", f"{prop:.2f}%")
     
-    # Gráfico de comparación con Power45
-    curva_ideal, tamices_mm = generar_curva_ideal_power45(tmn)
+    # Datos para gráficos
     mezcla_opt = resultado.get('mezcla_optimizada', [])
+    curva_ideal, _ = generar_curva_ideal_power45(tmn)
     
-    # Tamices estándar (12 elementos)
-    tamices_nombres = ['1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+    # Tamices y Mapeo MM
+    tamices_lbl = ['1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+    mapa_mm = _get_sieve_mm_map()
+    tamices_mm = [mapa_mm.get(t, 0.1) for t in tamices_lbl]
     
-    # Ajustar longitudes para que coincidan
-    min_len = min(len(tamices_nombres), len(curva_ideal), len(mezcla_opt)) if mezcla_opt else min(len(tamices_nombres), len(curva_ideal))
+    # Ajustar longitudes
+    min_len = min(len(tamices_lbl), len(mezcla_opt))
+    tam_lbl_viz = tamices_lbl[:min_len]
+    tam_mm_viz = tamices_mm[:min_len]
+    mezcla_viz = mezcla_opt[:min_len]
+    ideal_viz = curva_ideal[:min_len]
     
-    # Tabs para diferentes gráficos
-    tab1, tab2, tab3, tab4 = st.tabs(["📉 Power 45", "🕷️ Tarántula", "🌾 Haystack", "🔷 Shilstone"])
+    # TABS
+    tab1, tab2, tab3, tab4 = st.tabs(["📉 Power 45 (Real)", "🕷️ Tarántula", "🌾 Haystack", "🔷 Shilstone"])
     
     with tab1:
-        st.markdown("##### Comparación con Curva Ideal Power 45")
-        fig = go.Figure()
+        fig_p45 = crear_grafico_power45_interactivo(tam_lbl_viz, tam_mm_viz, mezcla_viz, ideal_viz)
+        st.plotly_chart(fig_p45, use_container_width=True)
         
-        # Curva ideal Power45
-        fig.add_trace(go.Scatter(
-            x=tamices_nombres[:min_len],
-            y=curva_ideal[:min_len],
-            mode='lines',
-            name='Curva Ideal (Power 45)',
-            line=dict(color=COLOR_BUENO, width=3, dash='dash')
-        ))
-        
-        # Mezcla optimizada
-        if mezcla_opt:
-            fig.add_trace(go.Scatter(
-                x=tamices_nombres[:min_len],
-                y=mezcla_opt[:min_len],
-                mode='lines+markers',
-                name='Mezcla Optimizada',
-                line=dict(color=COLOR_PRIMARIO, width=3),
-                marker=dict(size=8)
-            ))
-        
-        fig.update_layout(
-            xaxis=dict(title="Tamiz", type='category'),
-            yaxis=dict(title="% Que Pasa", range=[0, 105]),
-            template="plotly_white",
-            hovermode="x unified"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
     with tab2:
-        st.markdown("##### Curva Tarántula (Retenidos Individuales)")
         if 'mezcla_retenido' in resultado:
-            retenidos = resultado['mezcla_retenido']
-            # Asegurar longitud coincidente con tamices visuales
-            retenidos_viz = retenidos[:len(tamices_nombres)]
-            fig_tar = crear_grafico_tarantula_interactivo(tamices_nombres[:len(retenidos_viz)], retenidos_viz, tmn)
+            ret = resultado['mezcla_retenido'][:min_len]
+            fig_tar = crear_grafico_tarantula_interactivo(tam_lbl_viz, ret, tmn)
             st.plotly_chart(fig_tar, use_container_width=True)
         else:
-            st.warning("⚠️ Faltan datos de retenido. Por favor ejecuta la optimización nuevamente.")
+            st.info("Sin datos de retenido.")
             
     with tab3:
-        st.markdown("##### Curva Haystack")
         if 'mezcla_retenido' in resultado:
-            retenidos = resultado['mezcla_retenido']
-            retenidos_viz = retenidos[:len(tamices_nombres)]
-            fig_hay = crear_grafico_haystack_interactivo(tamices_nombres[:len(retenidos_viz)], retenidos_viz)
+            ret = resultado['mezcla_retenido'][:min_len]
+            fig_hay = crear_grafico_haystack_interactivo(tam_lbl_viz, ret)
             st.plotly_chart(fig_hay, use_container_width=True)
-        else:
-            st.warning("⚠️ Faltan datos de retenido.")
-            
+    
     with tab4:
-        st.markdown("##### Diagrama de Factor de Tosquedad (Shilstone)")
         if 'shilstone_factors' in resultado:
             sf = resultado['shilstone_factors']
             fig_shil = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'])
             st.plotly_chart(fig_shil, use_container_width=True)
-            
-            c1, c2 = st.columns(2)
-            c1.metric("Coarseness Factor (Cf)", f"{sf['cf']:.1f}%", help="Retenido acumulado en 3/8\" / Retenido acumulado en #8")
-            c2.metric("Workability Factor (Wf)", f"{sf['wf']:.1f}%", help="% Pasante del tamiz #8")
+            st.caption(f"CF: {sf['cf']}% | WF: {sf['wf']}%")
         else:
-            st.warning("⚠️ Faltan factores de Shilstone. Re-optimiza para calcularlos.")
-    
+            st.warning("Faltan factores Shilstone.")
+
     # Evaluación de restricciones
     if 'evaluacion_restricciones' in resultado:
-        with st.expander("📋 Evaluación Detallada de Restricciones"):
-            eval_rest = resultado['evaluacion_restricciones']
-            st.json(eval_rest)
-
+        with st.expander("📋 Ver Restricciones"):
+            st.json(resultado['evaluacion_restricciones'])
 def crear_grafico_shilstone_interactivo(cf: float, wf: float) -> go.Figure:
     """
-    Crea el Diagrama de Shilstone (Workability vs Coarseness).
+    Crea el Diagrama de Shilstone Completo (Iowa Method).
+    Zonas I, II, III definidas explícitamente.
     """
     fig = go.Figure()
     
-    # Definir Zonas Aproximadas (Polígonos)
-    # Zona II (Óptima) - Banda Diagonal Típica
-    # Puntos aproximados de la banda "Trend Bar"
-    x_zone2 = [45, 75, 75, 45, 45]
-    y_zone2 = [39, 29, 34, 44, 39] # Ajustado para banda visual
+    # --- Definición de Líneas de Frontera (Trend Bar) ---
+    # Top Line (Separa Zona I de Zona II): (45, 41) -> (75, 31)
+    # Bottom Line (Separa Zona II de Zona III): (45, 37) -> (75, 27) (Aprox, ajustado a banda de 4pts)
+    # Iowa Spreadhseet suele usar una banda de ancho 4-6%.
+    # Usaremos coordenadas estándar aproximadas para "Traffic Light".
     
+    # ZONE II (WORKABLE) - BANDA CENTRAL
+    x_band = [45, 75, 75, 45, 45]
+    y_band = [41, 31, 27, 37, 41] # Vértices del paralelogramo Zona II
+    
+    # Relleno Zona II (Verde)
     fig.add_trace(go.Scatter(
-        x=x_zone2, y=y_zone2,
+        x=x_band, y=y_band,
         fill="toself",
-        fillcolor="rgba(0, 255, 0, 0.1)",
-        line=dict(color="rgba(0, 128, 0, 0.5)", dash="dash"),
-        name="Zona II (Óptima)",
+        fillcolor="rgba(46, 204, 113, 0.3)", 
+        line=dict(color="green", width=2),
+        name="Zona II (Optimal)",
         hoverinfo="skip"
     ))
     
+    # ZONE I (GAP GRADED) - ARRIBA
+    # Polígono que cubre la zona superior
+    x_zone1 = [20, 45, 75, 100, 100, 20, 20]
+    y_zone1 = [60, 41, 31, 23, 60, 60, 60] # Por encima de la línea superior
+    fig.add_trace(go.Scatter(
+        x=x_zone1, y=y_zone1,
+        fill="toself",
+        fillcolor="rgba(231, 76, 60, 0.1)", # Rojo muy suave
+        line=dict(width=0),
+        name="Zona I (Gap-Graded)",
+        hoverinfo="skip"
+    ))
+    
+    # ZONE III (SANDY) - ABAJO
+    x_zone3 = [20, 45, 75, 100, 100, 20, 20]
+    y_zone3 = [0, 37, 27, 19, 0, 0, 0] # Por debajo de la línea inferior
+    fig.add_trace(go.Scatter(
+        x=x_zone3, y=y_zone3,
+        fill="toself",
+        fillcolor="rgba(241, 196, 15, 0.1)", # Amarillo suave
+        line=dict(width=0),
+        name="Zona III (Sandy)",
+        hoverinfo="skip"
+    ))
+    
+    # Líneas Negras Divisorias (Explicit Quadrants)
+    # Límite Superior Zona II
+    fig.add_trace(go.Scatter(x=[20, 85], y=[49.3, 27.6], mode='lines', line=dict(color='black', width=2, dash='dash'), showlegend=False)) # Proyección aprox
+    # Mejor usar formas shapes para líneas exactas
+    
     # Punto de la Mezcla
-    color_punto = 'green'
-    # Validación simple: Si está dentro del box (simplificado)
-    # Check if inside rectangle 45-75 Cf and approx band Wf
-    if not (20 <= cf <= 90 and 10 <= wf <= 60):
-        color_punto = 'red'
+    in_zone_ii = 45 <= cf <= 75 and ( -0.333*cf + 52 <= wf <= -0.333*cf + 56) # Simple check visual logic
+    
+    color_punto = 'black'
+    symbol_punto = 'star'
+    size_punto = 20
     
     fig.add_trace(go.Scatter(
         x=[cf],
         y=[wf],
         mode='markers+text',
         name='Tu Mezcla',
-        text=["ESTÁS AQUÍ"],
-        textposition="top center",
-        marker=dict(size=15, color=color_punto, symbol='star', line=dict(width=2, color='black')),
-        hovertemplate="Cf: %{x:.1f}%<br>Wf: %{y:.1f}%<extra></extra>"
+        text=[" TU MEZCLA"],
+        textposition="top right",
+        marker=dict(size=size_punto, color=color_punto, symbol=symbol_punto, line=dict(width=2, color='white')),
+        hovertemplate=f"<b>Tu Mezcla</b><br>CF: %{{x:.1f}}%<br>WF: %{{y:.1f}}%<extra></extra>"
     ))
     
     fig.update_layout(
-        title="Diagrama de Factor de Tosquedad (Shilstone)",
-        xaxis=dict(title="Coarseness Factor (%)", range=[20, 90], zeroline=False),
-        yaxis=dict(title="Workability Factor (%)", range=[10, 60], zeroline=False),
+        title="Diagrama de Shilstone (Zonas I, II, III)",
+        xaxis=dict(title="Coarseness Factor (%)", range=[20, 80], dtick=5, showgrid=True, gridcolor='lightgray'),
+        yaxis=dict(title="Workability Factor (%)", range=[15, 50], dtick=5, showgrid=True, gridcolor='lightgray'),
         template="plotly_white",
-        height=500,
+        height=600,
         shapes=[
-            # Línea de tendencia (ejemplo)
-            dict(type="line", x0=45, y0=41.5, x1=75, y1=31.5, line=dict(color="gray", width=1, dash="dot"))
+            # Línea Superior Zona II (45,41) -> (75,31)
+            dict(type="line", x0=45, y0=41, x1=75, y1=31, line=dict(color="black", width=3)),
+            # Línea Inferior Zona II (45,37) -> (75,27)
+            dict(type="line", x0=45, y0=37, x1=75, y1=27, line=dict(color="black", width=3)),
+            # Línea Vertical CF=45
+            dict(type="line", x0=45, y0=15, x1=45, y1=50, line=dict(color="gray", width=1, dash="dot")),
+            # Línea Vertical CF=75
+            dict(type="line", x0=75, y0=15, x1=75, y1=50, line=dict(color="gray", width=1, dash="dot"))
         ]
     )
     
-    # Anotaciones
-    fig.add_annotation(x=30, y=50, text="ZONA I<br>(Gap-Graded)", showarrow=False, font=dict(color="orange"))
-    fig.add_annotation(x=80, y=20, text="ZONA III<br>(Arenosa)", showarrow=False, font=dict(color="orange"))
-    fig.add_annotation(x=60, y=36, text="ZONA II<br>(Trabajable)", showarrow=False, font=dict(color="green"))
+    # Etiquetas de Zonas Grandes
+    fig.add_annotation(x=35, y=45, text="<b>ZONA I</b><br>Segregación", font=dict(size=14, color="darkred"), showarrow=False)
+    fig.add_annotation(x=60, y=34, text="<b>ZONA II</b><br>Óptima", font=dict(size=14, color="darkgreen"), showarrow=False)
+    fig.add_annotation(x=65, y=22, text="<b>ZONA III</b><br>Muy Fina", font=dict(size=14, color="darkorange"), showarrow=False)
     
     return fig
