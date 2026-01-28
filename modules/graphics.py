@@ -31,7 +31,7 @@ def mostrar_resultados_faury(resultados: Dict):
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Cemento", f"{resultados['cemento']['cantidad']:.1f} kg/m³")
     col2.metric("Agua", f"{resultados['agua_cemento']['agua_amasado']:.1f} L/m³")
-    col3.metric("A/C", f"{resultados['agua_cemento']['razon_ac']:.3f}")
+    col3.metric("A/C", f"{resultados['agua_cemento']['razon']:.3f}")
     col4.metric("Aire", f"{resultados['aire']['volumen']:.1f} L/m³")
     
     # Tabla de cantidades
