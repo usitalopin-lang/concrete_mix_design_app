@@ -27,8 +27,28 @@ def crear_grafico_power45_interactivo(tamices_lbl: list, tamices_mm: list, real:
     return fig
 
 # Placeholders para evitar errores de importación
-def mostrar_resultados_faury(res): pass
-def mostrar_resultados_optimizacion(res, a, b): pass
-def crear_grafico_tarantula_interactivo(*args): return go.Figure()
-def crear_grafico_haystack_interactivo(*args): return go.Figure()
-def crear_grafico_gradaciones_individuales(*args): return go.Figure()
+# --- Gráficos Avanzados (Restaurados) ---
+
+def crear_grafico_tarantula_interactivo(tamices_lbl: list, retenidos: list) -> go.Figure:
+    """Implementa la Carta Tarántula (Retenidos Individuales)."""
+    fig = go.Figure()
+    # Límites Tarántula (Simplificados Iowa: 8-18% para tamices significativos)
+    fig.add_hrect(y0=8, y1=18, fillcolor="green", opacity=0.1, line_width=0, annotation_text="Ideal (8-18%)")
+    
+    fig.add_trace(go.Bar(x=tamices_lbl, y=retenidos, name="% Retenido", marker_color='blue'))
+    fig.update_layout(title="Carta Tarántula (% Retenido Individual)",
+                      xaxis_title="Tamiz", yaxis_title="% Retenido",
+                      yaxis=dict(range=[0, 30]), height=500, template="plotly_white")
+    return fig
+
+def crear_grafico_haystack_interactivo(tamices_lbl: list, retenidos: list) -> go.Figure:
+    """Gráfico 'Haystack' (Pajar) para ver distribución de tamaños."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=tamices_lbl, y=retenidos, fill='tozeroy', mode='none', name="Distribución"))
+    fig.update_layout(title="Distribución Haystack (Pajar)",
+                      xaxis_title="Tamiz", yaxis_title="% Retenido",
+                      height=400, template="plotly_white")
+    return fig
+
+def mostrar_resultados_optimizacion(res_opt, tamices_lbl, tamices_mm):
+    pass # Managed in UI directly now

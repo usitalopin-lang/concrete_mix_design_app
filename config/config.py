@@ -37,8 +37,10 @@ TABLA_AC = {150: 0.80, 200: 0.70, 250: 0.62, 300: 0.55, 350: 0.48, 400: 0.43, 45
 
 TABLA_COEF_T = {0.05: 1.645, 0.10: 1.282, 0.20: 0.842}
 
+PARAMETROS_FAURY = {
+    'Fluida': {'M': 0.32, 'N': 0.20}, 'Blanda': {'M': 0.28, 'N': 0.22},
     'Plástica':{'M': 0.24, 'N': 0.24}, 'Seca':   {'M': 0.20, 'N': 0.26},
-    'Muy Fluida': {'M': 0.36, 'N': 0.18} # Estimación basada en tendencia (Más fluida = mayor M, menor N)
+    'Muy Fluida': {'M': 0.36, 'N': 0.18} # Estimación basada en tendencia
 }
 
 REQUISITOS_DURABILIDAD = {

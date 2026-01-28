@@ -17,8 +17,26 @@ def generar_curva_ideal_power45(tmn: float, tamices: List[float] = None) -> Tupl
             ideales.append(max(0.0, min(100.0, pct)))
     return tamices, ideales
 
-def calcular_error_power45_normalizado(mezcla_pct: List[float], ideal_pct: List[float]) -> float:
-    min_len = min(len(mezcla_pct), len(ideal_pct))
-    if min_len == 0: return 0.0
-    mse = sum((m - i) ** 2 for m, i in zip(mezcla_pct[:min_len], ideal_pct[:min_len])) / min_len
     return round(np.sqrt(mse), 4)
+
+# --- Funciones Restauradas para Optimización (Iowa Method) ---
+
+def calcular_mezcla_granulometrica(proporciones: List[float], granulometrias: List[List[float]]) -> List[float]:
+    """Calcula la curva granulométrica combinada ponderada."""
+    mezcla = np.zeros(len(granulometrias[0]))
+    for pct, gran in zip(proporciones, granulometrias):
+        mezcla += np.array(gran) * (pct / 100.0)
+    return mezcla.tolist()
+
+def calcular_retenido(mezcla_pasante: List[float]) -> List[float]:
+    """Calcula el % retenido individual en cada tamiz."""
+    retenidos = []
+    anterior = 100.0
+    for pasa in mezcla_pasante:
+        ret = anterior - pasa
+        retenidos.append(max(0.0, round(ret, 2)))
+        anterior = pasa
+    return retenidos
+
+# Alias de compatibilidad para optimization.py
+calcular_error_power45 = calcular_error_power45_normalizado
