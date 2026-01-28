@@ -1,16 +1,17 @@
 import pandas as pd
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 from config.config import TAMICES_ASTM, MAPEO_COLUMNAS_EXCEL
 
-SHEET_ID = "1nSnoJ1rN6U9WJo7IIC23L9MD74dV0XyaYPb_D64bmmg"
-GID_ARIDOS = "67864589"
-# Corrected URL format (fixed user markdown typo)
-URL_ARIDOS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_ARIDOS}"
+# Nombre de la hoja en Google Sheets
+SHEET_ARIDOS = "Cat_Aridos"
 
 @st.cache_data(ttl=300)
 def cargar_catalogo_aridos():
     try:
-        df = pd.read_csv(URL_ARIDOS)
+        # Usar st-gsheets-connection como el resto de la app
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        df = conn.read(worksheet=SHEET_ARIDOS, ttl=0)
         
         # Debug: mostrar columnas originales
         st.info(f"📋 Columnas encontradas en Google Sheets: {list(df.columns)}")
