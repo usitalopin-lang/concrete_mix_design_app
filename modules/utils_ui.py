@@ -323,49 +323,87 @@ def input_aridos_ui():
             return aridos_resultado
     
     # Flujo normal (manual)
+    st.markdown("### Configuración de Áridos")
     num_aridos = st.radio("Número de áridos", options=[2, 3], index=0, horizontal=True)
     aridos = []
     cols = st.columns(num_aridos)
     aridos_cat = catalogs.obtener_aridos()
-    opciones_cat = ["Personalizado"] + [a['Nombre'] for a in aridos_cat]
+    
+    # Filtrar duplicados y vacíos
+    nombres_unicos = sorted(list(set([a['Nombre'] for a in aridos_cat if a.get('Nombre')])))
+    opciones_cat = ["Personalizado"] + nombres_unicos
     
     for i in range(num_aridos):
         with cols[i]:
             st.markdown(f"#### Árido {i+1}")
+            # Selectbox para elegir del catálogo
             sel_cat = st.selectbox("📂 Catálogo", options=opciones_cat, key=f"cat_arido_{i}")
             
-            # Defaults
+            # Valores por defecto base
             nombre_def, drs_def, drsss_def, abs_def, tipo_def = "Árido", 2650.0, 2700.0, 1.0, "Grueso"
+            gran_def = [0.0] * 12 # Default vacío
             
-            # (Simplificando lógica fallback anterior para brevedad, asumimos defaults genéricos o cat)
+            # Si se selecciona algo del catálogo, sobrescribir defaults
             if sel_cat != "Personalizado":
+                # Buscar el primero que coincida (asumiendo que si hay duplicados, tomamos el primero o cualquiera sirve)
                 datos = next((a for a in aridos_cat if a['Nombre'] == sel_cat), None)
                 if datos:
                     nombre_def = datos.get('Nombre', nombre_def)
                     tipo_def = datos.get('Tipo', tipo_def)
-                    drs_def = float(datos.get('Densidad_Real', drs_def))
-                    abs_def = float(datos.get('Absorcion', abs_def))
-                    drsss_def = float(datos.get('Densidad_SSS', drs_def*(1+abs_def/100)))
+                    
+                    # Manejo seguro de valores numéricos
+                    try:
+                        drs_def = float(datos.get('Densidad_Real', drs_def))
+                        abs_def = float(datos.get('Absorcion', abs_def))
+                        # Calcular DRSSS si no viene o es 0
+                        v_drsss = datos.get('Densidad_SSS')
+                        if v_drsss:
+                            drsss_def = float(v_drsss)
+                        else:
+                            drsss_def = drs_def * (1 + abs_def/100)
+                            
+                        # Cargar Granulometría si existe (columnas tamices)
+                        tamices_cols = ['t_40mm', 't_25mm', 't_20mm', 't_12mm', 't_10mm', 
+                                        't_5mm', 't_2_5mm', 't_1_25mm', 't_0_63mm', 
+                                        't_0_315mm', 't_0_16mm', 't_0_08mm'] # Mismos que historical
+                        # Mapeo aproximado si las columnas no coinciden exactamente, pero intentemos buscar en datos
+                        # Nota: Si viene de catalogo simple, no tendrá granulo. Si viene de merge, quizás sí.
+                        # Por ahora, mantenemos la lógica de placeholder si no hay granulo explícita.
+                        
+                    except (ValueError, TypeError):
+                        pass
 
-            nombre = st.text_input("Nombre", nombre_def, key=f"nombre_{i}")
-            tipo = st.selectbox("Tipo", ["Grueso", "Intermedio", "Fino"], index=["Grueso", "Intermedio", "Fino"].index(tipo_def) if tipo_def in ["Grueso", "Intermedio", "Fino"] else 0, key=f"tipo_{i}")
-            drs = st.number_input("DRS", min_value=2000.0, max_value=3500.0, value=drs_def, key=f"drs_{i}")
-            drsss = st.number_input("DRSSS", min_value=2000.0, max_value=3500.0, value=drsss_def, key=f"drsss_{i}")
-            absorcion = st.number_input("Abs %", min_value=0.0, max_value=10.0, value=abs_def, step=0.1, key=f"abs_{i}")
+            # TRUCO: Usar key dependiente de sel_cat para resetear inputs al cambiar selección
+            sufijo = f"{i}_{sel_cat}" 
+            
+            nombre = st.text_input("Nombre", nombre_def, key=f"nombre_{sufijo}")
+            
+            # Indice para tipo
+            idx_tipo = 0
+            opts_tipo = ["Grueso", "Intermedio", "Fino"]
+            if tipo_def in opts_tipo:
+                 idx_tipo = opts_tipo.index(tipo_def)
+                 
+            tipo = st.selectbox("Tipo", opts_tipo, index=idx_tipo, key=f"tipo_{sufijo}")
+            drs = st.number_input("DRS", min_value=1500.0, max_value=3500.0, value=drs_def, format="%.0f", key=f"drs_{sufijo}")
+            drsss = st.number_input("DRSSS", min_value=1500.0, max_value=3500.0, value=drsss_def, format="%.0f", key=f"drsss_{sufijo}")
+            absorcion = st.number_input("Abs %", min_value=0.0, max_value=10.0, value=abs_def, step=0.1, format="%.2f", key=f"abs_{sufijo}")
             
             st.markdown("**Granulometría**")
-            granulometria = []
-            # Defaults gran (asumiendo 0 si no hay info, user llena)
-            gran_def = [100,100,100,100,100,100,100,100,100,100,100,100] # Dirty placeholder
-            if tipo == "Grueso": gran_def = [100, 100, 97, 76, 34, 21, 2, 1, 0, 0, 0, 0]
-            elif tipo == "Fino": gran_def = [100, 100, 100, 100, 100, 100, 94, 74, 53, 37, 21, 8]
             
+            # Pre-llenar granulometría según tipo si es genérico
+            if sel_cat == "Personalizado" or all(x==0 for x in gran_def):
+                if tipo == "Grueso": gran_def = [100, 100, 97, 76, 34, 21, 2, 1, 0, 0, 0, 0]
+                elif tipo == "Fino": gran_def = [100, 100, 100, 100, 100, 100, 94, 74, 53, 37, 21, 8]
+            
+            granulometria = []
             for row in range(2):
                  c_gran = st.columns(6)
                  for j in range(6):
                      idx = row*6 + j
                      with c_gran[j]:
-                         val = st.number_input(TAMICES_ASTM[idx], 0.0, 100.0, float(gran_def[idx]), step=1.0, key=f"gran_{i}_{idx}")
+                         # Key también depende de sel_cat para actualizar granulo al cambiar árido
+                         val = st.number_input(TAMICES_ASTM[idx], 0.0, 100.0, float(gran_def[idx]), step=1.0, key=f"gran_{idx}_{sufijo}")
                          granulometria.append(val)
             
             aridos.append({'nombre': nombre, 'tipo': tipo, 'DRS': drs, 'DRSSS': drsss, 'absorcion': absorcion/100, 'granulometria': granulometria})
