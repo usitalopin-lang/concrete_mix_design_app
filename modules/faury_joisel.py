@@ -1,0 +1,577 @@
+"""
+Módulo Faury-Joisel para diseño de mezclas de concreto
+Implementa todas las fórmulas del método Faury-Joisel para
+cálculo de dosificación de hormigón.
+"""
+
+import numpy as np
+from typing import Dict, List, Tuple, Optional
+
+# Importar configuración
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.config import (
+    TABLA_AC, TABLA_AIRE, TABLA_COEF_T, PARAMETROS_FAURY,
+    TAMICES_MM, TAMICES_ASTM, TOLERANCIAS_BANDA, TABLA_AGUA_ACI,
+    REQUISITOS_DURABILIDAD
+)
+
+
+def obtener_coeficiente_t(fraccion_defectuosa: float) -> float:
+    """
+    Obtiene el coeficiente t según la fracción defectuosa.
+    
+    Args:
+        fraccion_defectuosa: Fracción de probetas que pueden estar bajo especificación (0.05-0.20)
+    
+    Returns:
+        Coeficiente t para el cálculo de resistencia media
+    """
+    # Interpolación lineal entre valores de tabla
+    fracciones = sorted(TABLA_COEF_T.keys())
+    
+    if fraccion_defectuosa <= fracciones[0]:
+        return TABLA_COEF_T[fracciones[0]]
+    if fraccion_defectuosa >= fracciones[-1]:
+        return TABLA_COEF_T[fracciones[-1]]
+    
+    for i in range(len(fracciones) - 1):
+        if fracciones[i] <= fraccion_defectuosa <= fracciones[i + 1]:
+            ratio = (fraccion_defectuosa - fracciones[i]) / (fracciones[i + 1] - fracciones[i])
+            t_inf = TABLA_COEF_T[fracciones[i]]
+            t_sup = TABLA_COEF_T[fracciones[i + 1]]
+            return t_inf + ratio * (t_sup - t_inf)
+    
+    return 1.282  # Valor por defecto (10%)
+
+
+def calcular_resistencia_media(fc: float, s: float, fraccion_def: float = 0.10) -> Tuple[float, float]:
+    """
+    Calcula la resistencia media de dosificación (fd).
+    
+    Fórmula: fd = fc' + s × t
+    
+    Args:
+        fc: Resistencia especificada en MPa
+        s: Desviación estándar en MPa
+        fraccion_def: Fracción defectuosa (default 0.10 = 10%)
+    
+    Returns:
+        Tupla (fd en MPa, fd en kg/cm² redondeado a múltiplo de 5)
+    """
+    t = obtener_coeficiente_t(fraccion_def)
+    fd_mpa = fc + s * t
+    
+    # Convertir a kg/cm² (1 MPa ≈ 10.2 kg/cm²) y redondear a múltiplo de 5
+    fd_kgcm2 = round(fd_mpa * 10.2 / 5) * 5
+    
+    return fd_mpa, fd_kgcm2
+
+
+def calcular_cemento(fd_kgcm2: float, factor_eficiencia: float = 0.95) -> float:
+    """
+    Calcula la cantidad de cemento por m³ de hormigón.
+    
+    Fórmula: C = fd × factor_eficiencia (redondeado a múltiplo de 5)
+    
+    Args:
+        fd_kgcm2: Resistencia media en kg/cm²
+        factor_eficiencia: Factor de eficiencia del cemento (default 0.95)
+    
+    Returns:
+        Cantidad de cemento en kg/m³
+    """
+    C = round(fd_kgcm2 * factor_eficiencia / 5) * 5
+    return max(C, 250)  # Mínimo 250 kg/m³ por durabilidad
+
+
+def obtener_razon_ac(fd_kgcm2: float) -> float:
+    """
+    Obtiene la razón agua/cemento según la resistencia.
+    Interpola linealmente entre valores de tabla.
+    
+    Args:
+        fd_kgcm2: Resistencia media en kg/cm²
+    
+    Returns:
+        Razón agua/cemento
+    """
+    resistencias = sorted(TABLA_AC.keys())
+    
+    if fd_kgcm2 <= resistencias[0]:
+        return TABLA_AC[resistencias[0]]
+    if fd_kgcm2 >= resistencias[-1]:
+        return TABLA_AC[resistencias[-1]]
+    
+    for i in range(len(resistencias) - 1):
+        if resistencias[i] <= fd_kgcm2 <= resistencias[i + 1]:
+            ratio = (fd_kgcm2 - resistencias[i]) / (resistencias[i + 1] - resistencias[i])
+            ac_inf = TABLA_AC[resistencias[i]]
+            ac_sup = TABLA_AC[resistencias[i + 1]]
+            return ac_inf + ratio * (ac_sup - ac_inf)
+    
+    return 0.50  # Valor por defecto
+
+
+def estimar_agua_amasado(asentamiento_str: str, tmn: float) -> float:
+    """
+    Estima el agua de amasado necesaria según asentamiento y TMN.
+    Usa TABLA_AGUA_ACI (basada en ACI 211.1).
+    
+    Args:
+        asentamiento_str: String del rango de asentamiento (ej '3-5 cm', '10-15 cm')
+        tmn: Tamaño máximo nominal en mm
+    
+    Returns:
+        Agua estimada en lt/m³
+    """
+    # Identificar clase de slump
+    slump_key = 'S2' # Default 8-10
+    if '0-2' in asentamiento_str or '3-5' in asentamiento_str:
+        slump_key = 'S1'
+    elif '10-15' in asentamiento_str:
+        slump_key = 'S3'
+    else:
+        slump_key = 'S2' # 6-9cm
+        
+    # Buscar en tabla por TMN (aproximar si no es exacto)
+    tmn_keys = sorted(TABLA_AGUA_ACI.keys())
+    closest_tmn = min(tmn_keys, key=lambda x: abs(x - tmn))
+    
+    return TABLA_AGUA_ACI[closest_tmn][slump_key]
+
+
+def calcular_cemento_por_agua(agua: float, ac_ratio: float, min_cemento: float = 250) -> float:
+    """
+    Calcula cemento a partir de agua y razón A/C.
+    
+    Args:
+        agua: Agua de amasado en lt/m³
+        ac_ratio: Razón agua/cemento
+        min_cemento: Cemento mínimo por durabilidad
+        
+    Returns:
+        Cemento en kg/m³ (redondeado a 5 kg)
+    """
+    if ac_ratio <= 0: return 0
+    cemento = agua / ac_ratio
+    # Aplicar mínimos
+    cemento = max(cemento, min_cemento)
+    # Redondear
+    return round(cemento / 5) * 5
+
+
+def obtener_aire_ocluido(dn_mm: float, aire_incorporado: float = 0.0) -> float:
+    """
+    Obtiene el volumen de aire ocluido según tamaño máximo del árido.
+    
+    Args:
+        dn_mm: Tamaño máximo nominal en mm
+        aire_incorporado: Porcentaje adicional de aire incorporado
+    
+    Returns:
+        Volumen de aire en lt/m³
+    """
+    # Encontrar el valor más cercano en la tabla
+    dn_keys = sorted(TABLA_AIRE.keys())
+    
+    if dn_mm <= dn_keys[0]:
+        aire_base = TABLA_AIRE[dn_keys[0]]
+    elif dn_mm >= dn_keys[-1]:
+        aire_base = TABLA_AIRE[dn_keys[-1]]
+    else:
+        # Interpolar
+        for i in range(len(dn_keys) - 1):
+            if dn_keys[i] <= dn_mm <= dn_keys[i + 1]:
+                ratio = (dn_mm - dn_keys[i]) / (dn_keys[i + 1] - dn_keys[i])
+                aire_base = TABLA_AIRE[dn_keys[i]] + ratio * (TABLA_AIRE[dn_keys[i + 1]] - TABLA_AIRE[dn_keys[i]])
+                break
+        else:
+            aire_base = 35
+    
+    # Agregar aire incorporado (convertir de % a lt/m³)
+    return aire_base + (aire_incorporado * 10)
+
+
+def calcular_compacidad(aire: float, agua: float) -> float:
+    """
+    Calcula la compacidad de la mezcla (volumen de sólidos por m³).
+    
+    Fórmula: z = 1 - (ha/1000) - (A/1000)
+    
+    Args:
+        aire: Volumen de aire en lt/m³
+        agua: Agua de amasado en lt/m³
+    
+    Returns:
+        Compacidad (m³ de sólidos por m³ de hormigón)
+    """
+    z = 1.0 - (aire / 1000) - (agua / 1000)
+    # AJUSTE: La compacidad incluye el cemento y los áridos, pero no el agua ni el aire.
+    # Si hay aditivos, su volumen debe restarse del volumen disponible, pero ¿forman parte de z?
+    # Faury define z como el volumen absoluto de materiales sólidos (cemento + áridos).
+    # Si consideramos los aditivos como parte del volumen sólido (si son polvos) o líquido (si son líquidos),
+    # cambia la ecuación. 
+    # Para simplificar y seguir la práctica estándar:
+    # z = Vol_Cemento + Vol_Aridos.
+    # z = 1 - V_agua - V_aire - V_aditivos
+    # Esta función ahora solo calcula el espacio DISPONIBLE para sólidos si no consideramos aditivos.
+    # Se ajustará en el flujo principal.
+    return max(z, 0.60)  # Mínimo razonable
+
+
+def calcular_porcentaje_cemento_volumen(cemento: float, compacidad: float, 
+                                        densidad_cemento: float = 3140) -> float:
+    """
+    Calcula el porcentaje volumétrico de cemento.
+    
+    Fórmula: c = C / (z × ρc)
+    
+    Args:
+        cemento: Cantidad de cemento en kg/m³
+        compacidad: Compacidad de la mezcla
+        densidad_cemento: Densidad del cemento en kg/m³
+    
+    Returns:
+        Fracción volumétrica del cemento (0-1)
+    """
+    return cemento / (compacidad * densidad_cemento)
+
+
+def calcular_proporciones_faury(dn_mm: float, consistencia: str, c_vol: float,
+                                 num_aridos: int = 2) -> Dict[str, float]:
+    """
+    Calcula las proporciones volumétricas según el método Faury-Joisel.
+    
+    Args:
+        dn_mm: Tamaño máximo nominal en mm
+        consistencia: Tipo de consistencia (Seca, Plástica, Blanda, Fluida)
+        c_vol: Fracción volumétrica del cemento
+        num_aridos: Número de áridos (2 o 3)
+    
+    Returns:
+        Diccionario con proporciones volumétricas de cada componente
+    """
+    # Obtener parámetros M y N según consistencia
+    params = PARAMETROS_FAURY.get(consistencia, PARAMETROS_FAURY['Blanda'])
+    M, N = params['M'], params['N']
+    
+    # Calcular punto medio de la curva Faury
+    # Y(Dn/2) define la proporción de áridos gruesos vs finos
+    if dn_mm == 25:
+        i_gruesos = 0.44  # Proporción volumétrica típica de gruesos
+    elif dn_mm == 40:
+        i_gruesos = 0.48
+    elif dn_mm == 20:
+        i_gruesos = 0.42
+    else:
+        i_gruesos = 0.43  # Valor por defecto
+    
+    # Ajustar según consistencia
+    if consistencia == 'Seca':
+        i_gruesos += 0.02
+    elif consistencia == 'Fluida':
+        i_gruesos -= 0.03
+    
+    # Calcular proporciones
+    f_c = 1.0 - i_gruesos  # Finos + cemento
+    f = f_c - c_vol  # Solo finos (arena)
+    
+    if num_aridos == 2:
+        return {
+            'grueso': i_gruesos,
+            'fino': f,
+            'cemento': c_vol
+        }
+    else:  # 3 áridos
+        # Dividir gruesos en dos fracciones
+        return {
+            'grueso_1': i_gruesos * 0.55,
+            'grueso_2': i_gruesos * 0.45,
+            'fino': f,
+            'cemento': c_vol
+        }
+
+
+def calcular_cantidades_kg(proporciones: Dict[str, float], compacidad: float,
+                           densidades: Dict[str, float]) -> Dict[str, float]:
+    """
+    Calcula las cantidades en kg/m³ a partir de las proporciones volumétricas.
+    
+    Fórmula: Cantidad = proporción × z × DRS
+    
+    Args:
+        proporciones: Diccionario con proporciones volumétricas
+        compacidad: Compacidad de la mezcla
+        densidades: Diccionario con densidades reales secas (DRS) en kg/m³
+    
+    Returns:
+        Diccionario con cantidades en kg/m³
+    """
+    cantidades = {}
+    for material, prop in proporciones.items():
+        if material in densidades and material != 'cemento':
+            cantidades[material] = prop * compacidad * densidades[material]
+    return cantidades
+
+
+def calcular_agua_absorcion(cantidades: Dict[str, float], 
+                            absorciones: Dict[str, float]) -> float:
+    """
+    Calcula el agua de absorción total de los áridos.
+    
+    Fórmula: a = Σ(cantidad_i × absorción_i)
+    
+    Args:
+        cantidades: Diccionario con cantidades de áridos en kg/m³
+        absorciones: Diccionario con porcentajes de absorción (como fracción)
+    
+    Returns:
+        Agua de absorción total en lt/m³
+    """
+    absorcion_total = 0.0
+    for material, cantidad in cantidades.items():
+        if material in absorciones:
+            absorcion_total += cantidad * absorciones[material]
+    return absorcion_total
+
+
+def calcular_agua_total(agua_amasado: float, agua_absorcion: float) -> float:
+    """
+    Calcula el agua total necesaria.
+    
+    Args:
+        agua_amasado: Agua de amasado en lt/m³
+        agua_absorcion: Agua de absorción en lt/m³
+    
+    Returns:
+        Agua total en lt/m³
+    """
+    return agua_amasado + agua_absorcion
+
+
+def calcular_granulometria_mezcla(proporciones_peso: Dict[str, float],
+                                   granulometrias: Dict[str, List[float]]) -> List[float]:
+    """
+    Calcula la granulometría de la mezcla combinada.
+    
+    Fórmula: Mezcla[tamiz] = Σ(proporción_i × granulometría_i[tamiz])
+    
+    Args:
+        proporciones_peso: Proporciones en peso de cada árido (suman 1.0)
+        granulometrias: Granulometrías de cada árido (% que pasa por tamiz)
+    
+    Returns:
+        Lista con % que pasa para cada tamiz de la mezcla
+    """
+    num_tamices = len(TAMICES_MM)
+    mezcla = [0.0] * num_tamices
+    
+    for i in range(num_tamices):
+        for material, prop in proporciones_peso.items():
+            if material in granulometrias:
+                mezcla[i] += prop * granulometrias[material][i] / 100.0
+    
+    # Convertir a porcentaje
+    mezcla = [v * 100 for v in mezcla]
+    return mezcla
+
+
+def calcular_banda_trabajo(mezcla: List[float]) -> List[Tuple[float, float]]:
+    """
+    Calcula la banda de trabajo (límites superior e inferior).
+    
+    Args:
+        mezcla: Lista con % que pasa de la mezcla por cada tamiz
+    
+    Returns:
+        Lista de tuplas (límite_inferior, límite_superior) para cada tamiz
+    """
+    banda = []
+    for i, tamiz in enumerate(TAMICES_ASTM):
+        tol = TOLERANCIAS_BANDA.get(tamiz, 3)
+        limite_inf = max(0, mezcla[i] - tol)
+        limite_sup = min(100, mezcla[i] + tol)
+        banda.append((limite_inf, limite_sup))
+    return banda
+
+
+def calcular_proporciones_peso(cantidades: Dict[str, float]) -> Dict[str, float]:
+    """
+    Convierte cantidades en kg/m³ a proporciones en peso.
+    
+    Args:
+        cantidades: Diccionario con cantidades en kg/m³
+    
+    Returns:
+        Diccionario con proporciones en peso (suman 1.0)
+    """
+    total = sum(cantidades.values())
+    if total == 0:
+        return {k: 0 for k in cantidades}
+    return {k: v / total for k, v in cantidades.items()}
+
+
+def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
+                         fraccion_def: float, consistencia: str,
+                         tmn: float, densidad_cemento: float,
+                         aridos: List[Dict], aire_porcentaje: float = 0.0,
+                         condicion_exposicion: str = "Sin riesgo",
+                         aditivos_config: List[Dict] = None) -> Dict:
+    """
+    Función principal que ejecuta todo el diseño de mezcla por Faury-Joisel.
+    
+    Args:
+        resistencia_fc: Resistencia especificada en MPa
+        desviacion_std: Desviación estándar en MPa
+        fraccion_def: Fracción defectuosa
+        consistencia: Tipo de consistencia
+        tmn: Tamaño máximo nominal en mm
+        densidad_cemento: Densidad del cemento en kg/m³
+        aridos: Lista de diccionarios con datos de cada árido
+        aire_porcentaje: Porcentaje de aire incorporado adicional
+        condicion_exposicion: Condición de durabilidad
+    
+    Returns:
+        Diccionario con todos los resultados del diseño
+    """
+    # 0. Obtener requisitos de durabilidad
+    req_durabilidad = REQUISITOS_DURABILIDAD.get(condicion_exposicion, REQUISITOS_DURABILIDAD["Sin riesgo"])
+    max_ac_durabilidad = req_durabilidad['max_ac']
+    min_cemento_durabilidad = req_durabilidad['min_cemento']
+
+    # 1. Resistencia media
+    fd_mpa, fd_kgcm2 = calcular_resistencia_media(resistencia_fc, desviacion_std, fraccion_def)
+    
+    # 3. Razón agua/cemento (por resistencia)
+    ac_ratio_resistencia = obtener_razon_ac(fd_kgcm2)
+    
+    # Aplicar restricción de durabilidad (el menor A/C rige)
+    ac_ratio = min(ac_ratio_resistencia, max_ac_durabilidad)
+    
+    # NUEVO FLUJO:
+    # 4. Agua de amasado (por demanda de trabajabilidad ACI)
+    # Asentamiento viene en 'consistencia' si es el string mapeado, o necesitamos el asentamiento real
+    # La UI pasa parametros faury parametrizados por consistencia, pero aqui necesitamos el asentamiento para el agua ACI
+    # 'consistencia' aqui es 'Seca', 'Plastica', etc. Mapeamos a rango
+    from config.config import CONSISTENCIAS
+    rango_asentamiento = CONSISTENCIAS.get(consistencia, '6-9 cm')
+    
+    agua_amasado = estimar_agua_amasado(rango_asentamiento, tmn)
+    
+    # 5. Aire ocluido (volumen)
+    aire = obtener_aire_ocluido(tmn, aire_porcentaje)
+    
+    # 2. Cantidad de cemento (Calculado desde agua y A/C, respetando minimos)
+    # Se ignora el cálculo antiguo basado solo en eficiencia
+    cemento = calcular_cemento_por_agua(agua_amasado, ac_ratio, min_cemento_durabilidad)
+    
+    # NUEVO: Calcular Aditivos
+    aditivos_res = []
+    volumen_aditivos_lt = 0.0
+    
+    if aditivos_config:
+        for ad in aditivos_config:
+            nombre = ad['nombre']
+            dosis = ad['dosis_pct']
+            densidad = ad['densidad_kg_lt']
+            
+            peso_ad = cemento * (dosis / 100.0)
+            vol_ad = peso_ad / densidad
+            
+            aditivos_res.append({
+                'nombre': nombre,
+                'cantidad_kg': round(peso_ad, 3),
+                'volumen_lt': round(vol_ad, 3),
+                'dosis_pct': dosis
+            })
+            volumen_aditivos_lt += vol_ad
+
+    # 6. Compacidad (Ajustada por aditivos)
+    # z = Volumen Absoluto Cemento + Volumen Absoluto Áridos
+    # z = 1000 litros - Agua - Aire - Aditivos
+    
+    volumen_disponible_solidos = 1000.0 - agua_amasado - aire - volumen_aditivos_lt
+    compacidad = volumen_disponible_solidos / 1000.0
+    compacidad = max(compacidad, 0.55) # Safety check
+    
+    # 7. Porcentaje volumétrico de cemento
+    c_vol = calcular_porcentaje_cemento_volumen(cemento, compacidad, densidad_cemento)
+    
+    # 8. Proporciones volumétricas
+    num_aridos = len(aridos)
+    proporciones_vol = calcular_proporciones_faury(tmn, consistencia, c_vol, num_aridos)
+    
+    # 9. Densidades de áridos
+    densidades = {}
+    absorciones = {}
+    granulometrias = {}
+    
+    for i, arido in enumerate(aridos):
+        nombre = arido.get('nombre', f'arido_{i}')
+        if num_aridos == 2:
+            if i == 0:
+                key = 'grueso'
+            else:
+                key = 'fino'
+        else:
+            if i == 0:
+                key = 'grueso_1'
+            elif i == 1:
+                key = 'grueso_2'
+            else:
+                key = 'fino'
+        
+        densidades[key] = arido.get('DRS', 2650)
+        absorciones[key] = arido.get('absorcion', 0.01)
+        granulometrias[key] = arido.get('granulometria', [100] * 12)
+    
+    # 10. Cantidades en kg/m³
+    cantidades = calcular_cantidades_kg(proporciones_vol, compacidad, densidades)
+    
+    # 11. Agua de absorción
+    agua_absorcion = calcular_agua_absorcion(cantidades, absorciones)
+    
+    # 12. Agua total
+    agua_total = calcular_agua_total(agua_amasado, agua_absorcion)
+    
+    # 13. Proporciones en peso
+    proporciones_peso = calcular_proporciones_peso(cantidades)
+    
+    # 14. Granulometría de la mezcla
+    mezcla_granulometria = calcular_granulometria_mezcla(proporciones_peso, granulometrias)
+    
+    # 15. Banda de trabajo
+    banda_trabajo = calcular_banda_trabajo(mezcla_granulometria)
+    
+    return {
+        'resistencia': {
+            'fd_mpa': round(fd_mpa, 2),
+            'fd_kgcm2': fd_kgcm2,
+            'coef_t': obtener_coeficiente_t(fraccion_def)
+        },
+        'cemento': {
+            'cantidad': cemento,
+            'densidad': densidad_cemento
+        },
+        'agua_cemento': {
+            'razon': round(ac_ratio, 3),
+            'agua_amasado': round(agua_amasado, 1),
+            'agua_absorcion': round(agua_absorcion, 1),
+            'agua_total': round(agua_total, 1)
+        },
+        'aire': {
+            'volumen': round(aire, 1),
+            'porcentaje': round(aire / 10, 1)
+        },
+        'compacidad': round(compacidad, 4),
+        'proporciones_volumetricas': {k: round(v, 4) for k, v in proporciones_vol.items()},
+        'cantidades_kg_m3': {k: round(v, 1) for k, v in cantidades.items()},
+        'proporciones_peso': {k: round(v, 4) for k, v in proporciones_peso.items()},
+        'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
+        'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
+        'banda_trabajo': [(round(inf, 1), round(sup, 1)) for inf, sup in banda_trabajo],
+        'aditivos': aditivos_res,
+        'volumen_aditivos': round(volumen_aditivos_lt, 2)
+    }

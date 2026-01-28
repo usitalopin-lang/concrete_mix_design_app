@@ -1,0 +1,897 @@
+REFERENCE DOCUMENTS ANALYSIS
+============================
+
+--- Analyzing PDF: c71a5620-7ac8-4d53-9110-ea4d9c084e3a.pdf ---
+Total Pages: 22
+
+--- Page 1 ---
+Análisis Técnico Completo de Archivos Excel
+Diseño de Mezclas de Concreto
+1. Estructura General de los Archivos
+1.1 INF-DOH-1842_G30-8.xlsx
+Hoja Propósito
+Plantilla Dosif. Cálculos principales del método Faury-Joisel,
+granulometría, proporciones
+PAUTA Cálculos Shilstone (CF, W, FM)
+Informe N| 936 Formato de reporte PDF con 6 páginas
+1.2 Mixture-proportioning-2021-06 (2).xlsx
+Hoja Propósito
+0 Instructions Instrucciones de uso
+1 Aggregate system Sistema de agregados, granulometría,
+variables del Solver
+2 Paste quality Calidad de pasta, w/cm, aire, SCMs
+3 Paste Quantity Proporciones de mezcla, volúmenes
+4 Agg Analysis Power 45, T arantula, restricciones
+1
+
+--- Page 2 ---
+2. Método Faury-Joisel (INF-DOH-1842_G30-8.xlsx)
+2.1 Parámetros de Entrada
+# Datos de entrada principales
+INPUTS = {
+'resistencia_diseno': 30,  # MPa (fc')
+'desviacion_std': 4,       # s (desviación estándar)
+'coef_t': 1.282,           # Coeficiente t para fracción defectuosa
+'tamano_max_arido': 25,    # Dn en mm (1")
+'consistencia': 'Blanda',  # Tipo de consistencia
+'densidad_cemento': 3140,  # kg/m³
+}
+# Áridos (hasta 3 tipos)
+ARIDOS = {
+'grava_chancada': {
+'nombre': 'G. Chancada 25 mm',
+'DRS': 2730,  # Densidad Real Seca kg/m³
+'DRSSS': 2760,  # Densidad Real SSS kg/m³
+'absorcion': 0.009,  # 0.9%
+'granulometria': [100, 100, 97, 76, 34, 21, 2, 1, 0, 0, 0, 0]
+    },
+'grava_rodada': {
+'nombre': 'G. Rodada 25 mm',
+'DRS': 2655,
+'DRSSS': 2680,
+'absorcion': 0.011,
+'granulometria': [100, 100, 90, 71, 45, 32, 4, 2, 0, 0, 0, 0]
+    },
+'arena': {
+'nombre': 'Arena 10 mm',
+'DRS': 2610,
+'DRSSS': 2650,
+'absorcion': 0.016,
+'granulometria': [100, 100, 100, 100, 100, 100, 94, 74, 53, 37, 21, 8]
+    }
+}
+# Tamices estándar (mm)
+TAMICES = [40, 25, 20, 12.5, 10, 5, 2, 1.25, 0.63, 0.315, 0.16, 0.08]
+TAMICES_ASTM = ['1½"', '1"', '¾"', '1/2"', '3/8"', 'Nº4', 'Nº8', 'Nº16', 'Nº30', 'Nº50
+', 'Nº100', 'Nº200']
+2
+
+--- Page 3 ---
+2.2 Fórmulas del Método Faury-Joisel
+a) Resistencia Media de Dosificación
+defcalcular_resistencia_media(fc, s, t):
+"""
+    fd = fc' + s × t
+    Donde:
+    - fc': resistencia especificada (MPa)
+    - s: desviación estándar (MPa)
+    - t: coeficiente estadístico (1.282 para 10% defectuosos)
+    """
+    fd = fc + s * t
+# Convertir a kg/cm² y redondear a múltiplo de 5
+    fd_kgcm2 = round(fd * 10.2/ 5) * 5
+return fd, fd_kgcm2
+b) Cantidad de Cemento
+defcalcular_cemento(fd_kgcm2, factor_eficiencia=0.95):
+"""
+    C = fd_kgcm2 × factor_eficiencia
+    Redondeado a múltiplo de 5
+    """
+    C = round(fd_kgcm2 * factor_eficiencia / 5) * 5
+return C  # kg/m³
+c) Razón Agua/Cemento (de tablas)
+# Tabla A/C según resistencia (simplificada)
+TABLA_AC = {
+250: 0.60, 300: 0.52, 350: 0.47, 
+400: 0.43, 450: 0.40, 500: 0.37
+}
+defobtener_ac(fd_kgcm2):
+# Interpolación lineal entre valores de tabla
+    keys = sorted(TABLA_AC.keys())
+for i inrange(len(keys)-1):
+if keys[i] <= fd_kgcm2 <= keys[i+1]:
+            ratio = (fd_kgcm2 - keys[i]) / (keys[i+1] - keys[i])
+return TABLA_AC[keys[i]] + ratio * (TABLA_AC[keys[i+1]] -
+TABLA_AC[keys[i]])
+return0.43 # valor por defecto
+d) Agua de Amasado
+defcalcular_agua_amasado(ac_ratio, cemento):
+"""A = (A/C) × C"""
+return ac_ratio * cemento  # lt/m³
+3
+
+--- Page 4 ---
+e) Aire Ocluido
+# Tabla de aire según tamaño máximo
+TABLA_AIRE = {
+10: 50,   # lt/m³
+12.5: 45,
+20: 40,
+25: 35,
+40: 25
+}
+defobtener_aire_ocluido(dn_mm):
+return TABLA_AIRE.get(dn_mm, 35)
+f) Compacidad (z)
+defcalcular_compacidad(ha, agua):
+"""
+    z = 1 - (ha/1000) - (A/1000)
+    Donde:
+    - ha: aire ocluido (lt/m³)
+    - A: agua de amasado (lt/m³)
+    """
+    z = 1 - (ha/1000) - (agua/1000)
+return z  # m³ de sólidos por m³ de hormigón
+g) Porcentaje de Cemento en Volumen
+defcalcular_porcentaje_cemento(C, z, densidad_cemento=3140):
+"""
+    c = C / (z × ρc)
+    """
+    c = C / (z * densidad_cemento)
+return c  # fracción volumétrica
+4
+
+--- Page 5 ---
+h) Proporciones de Áridos (Curva de Faury)
+defcalcular_proporciones_faury(dn, consistencia, c_vol):
+"""
+    Basado en curva ideal L de Faury-Joisel
+    Para Dn = 25mm y consistencia blanda:
+    - Y(Dn/2) = 12.5mm
+    - M = 32, N = 27.95
+    Proporciones típicas (ajustar según curva):
+    - i1 (gravilla chancada)
+    - i2 (gravilla rodada) 
+    - f + c (arena + cemento)
+    """
+# Valores de referencia para Dn=25mm, consistencia blanda
+if dn ==25:
+        M, N = 32, 27.95
+else:
+        M, N = 30, 26 # valores aproximados
+# Del gráfico de Faury (ejemplo)
+    i_gruesos = 0.437# proporción volumétrica de gruesos
+    f_c = 1 - i_gruesos  # finos + cemento
+# f = (f+c) - c
+    f = f_c - c_vol
+return {
+'i1': 0,  # Ajustar según disponibilidad
+'i2': i_gruesos,
+'f': f,
+'c': c_vol
+    }
+i) Cantidades en kg/m³
+defcalcular_cantidades_kg(proporciones, z, densidades):
+"""
+    Cantidad = proporción × z × DRS
+    """
+    cantidades = {}
+for material, prop in proporciones.items():
+if material in densidades:
+            cantidades[material] = prop * z * densidades[material]
+return cantidades
+j) Agua de Absorción
+defcalcular_agua_absorcion(cantidades, absorciones):
+"""
+    a = Σ(cantidad_i × absorción_i)
+    """
+    absorcion_total = 0
+for material, cantidad in cantidades.items():
+if material in absorciones:
+            absorcion_total += cantidad * absorciones[material]
+return absorcion_total  # lt/m³
+5
+
+--- Page 6 ---
+k) Agua Total
+defcalcular_agua_total(agua_amasado, agua_absorcion):
+return agua_amasado + agua_absorcion  # lt/m³
+2.3 Granulometría de la Mezcla
+defcalcular_granulometria_mezcla(proporciones_peso, granulometrias):
+"""
+    Calcula el % que pasa para cada tamiz de la mezcla
+    Mezcla[tamiz] = Σ(proporción_i × granulometría_i[tamiz])
+    """
+    mezcla = []
+for i, tamiz inenumerate(TAMICES):
+        valor = 0
+for material, prop in proporciones_peso.items():
+if material in granulometrias:
+                valor += prop * granulometrias[material][i] / 100
+        mezcla.append(valor)
+return mezcla
+2.4 Banda de Trabajo
+defcalcular_banda_trabajo(mezcla):
+"""
+    Banda de trabajo: Mezcla ± tolerancia
+    Tolerancias típicas por tamiz:
+    - Tamices gruesos (>4mm): ±4%
+    - #16, #30: ±4%
+    - #50: ±3%
+    - #100: ±2%
+    - #200: -3%, +2%
+    """
+    tolerancias = {
+'1½"': 4, '1"': 4, '¾"': 4, '1/2"': 4, '3/8"': 4, 'Nº4': 4,
+'Nº8': 4, 'Nº16': 4, 'Nº30': 4, 'Nº50': 3, 'Nº100': 2, 'Nº200': 3
+    }
+    banda = []
+for i, tamiz inenumerate(TAMICES_ASTM):
+        tol = tolerancias.get(tamiz, 3)
+        limite_inf = max(0, mezcla[i] - tol)
+        limite_sup = min(100, mezcla[i] + tol)
+        banda.append((limite_inf, limite_sup))
+return banda
+6
+
+--- Page 7 ---
+3. Gráficos Shilstone (PAUTA)
+3.1 Cálculo del Coarseness Factor (CF)
+defcalcular_CF(pasa_3_8, pasa_8):
+"""
+    CF = Q / (Q + I) × 100
+    Donde:
+    - Q = 100 - (% pasa 3/8")
+    - I = (% pasa 3/8") - (% pasa #8)
+    """
+    Q = 100- pasa_3_8
+    I = pasa_3_8 - pasa_8
+    CF = (Q / (Q + I)) * 100
+return CF
+3.2 Cálculo del Workability Factor (W y Wadj)
+defcalcular_W(pasa_8):
+"""W = % pasa tamiz #8"""
+return pasa_8
+defcalcular_ajuste(cemento):
+"""
+    Adj = 0.0588 × Cc - 19.647
+    Alternativa: Adj2 = (2.5 × (Cc - 335)) / 56
+    """
+    adj = 0.0588* cemento - 19.647
+return adj
+defcalcular_Wadj(W, adj):
+"""Wadj = W + Adj"""
+return W + adj
+3.3 Cálculo del Factor de Mortero (FM)
+defcalcular_FM(cemento, pec, pasa_8, peso_aridos_total, dsss, agua_neta, aditivos, 
+aire):
+"""
+    FM = (Cc/pec) + ((pasa_8/100 × PA_total)/Dsss) + Agua_neta + Aditivos + Aire
+    Donde:
+    - Cc: contenido de cemento (kg)
+    - pec: densidad del cemento (3.14 kg/lt)
+    - PA_total: peso total de áridos (kg)
+    - Dsss: densidad SSS de la arena (kg/lt)
+    - Agua_neta: agua de amasado (lt)
+    - Aditivos: volumen de aditivos (lt)
+    - Aire: volumen de aire (lt)
+    """
+    vol_cemento = cemento / pec
+    vol_finos = (pasa_8/100* peso_aridos_total) / dsss
+    FM = vol_cemento + vol_finos + agua_neta + aditivos + aire
+return FM  # lt/m³
+7
+
+--- Page 8 ---
+3.4 Zonas del Gráfico Shilstone
+# Coordenadas de las zonas según MC Tabla 5.410.302.B
+ZONAS_SHILSTONE = {
+'zona_1': {  # Zona aceptable
+'linea_superior': [(100, 36), (35, 45)],
+'linea_inferior': [(100, 27), (85, 27), (15, 37), (0, 37)]
+    },
+'limites': {
+'CF_min': 45,
+'CF_max': 75,
+'W_min': 27,
+'W_max': 45
+    }
+}
+defevaluar_zona_shilstone(CF, Wadj):
+"""
+    Evalúa si el punto (CF, Wadj) está en zona aceptable
+    Zona I: Óptima para trabajabilidad
+    """
+# Verificar límites básicos
+if45<= CF <=75and27<= Wadj <=45:
+return"Zona I - Óptima"
+elif CF > 75:
+return"Mezcla muy gruesa - ajustar finos"
+elif CF < 45:
+return"Mezcla muy fina - ajustar gruesos"
+elif Wadj > 45:
+return"Exceso de finos - riesgo de segregación"
+else:
+return"Deficiente trabajabilidad"
+8
+
+--- Page 9 ---
+3.5 Código para Gráfico Shilstone
+importmatplotlib.pyplotasplt
+importnumpyasnp
+defgraficar_shilstone(CF, Wadj, titulo="Gráfico Shilstone"):
+"""
+    Genera gráfico de Coarseness Factor vs Workability Factor
+    """
+    fig, ax = plt.subplots(figsize=(10, 8))
+# Zona I (aceptable) - polígono
+    zona1_x = [100, 85, 15, 0, 0, 35, 100, 100]
+    zona1_y = [27, 27, 37, 37, 45, 45, 36, 27]
+    ax.fill(zona1_x, zona1_y, alpha=0.3, color='green', label='Zona I')
+# Líneas de referencia
+    ax.plot([100, 35], [36, 45], 'g-', linewidth=2)
+    ax.plot([100, 85, 15, 0], [27, 27, 37, 37], 'g-', linewidth=2)
+# Punto de la mezcla
+    ax.scatter([CF], [Wadj], s=200, c='red', marker='o', zorder=5)
+    ax.annotate(f'({CF:.1f}, {Wadj:.1f})', (CF, Wadj), 
+                xytext=(10, 10), textcoords='offset points')
+# Configuración
+    ax.set_xlabel('Coarseness Factor (CF)', fontsize=12)
+    ax.set_ylabel('Workability Factor Adjusted (Wadj)', fontsize=12)
+    ax.set_title(titulo, fontsize=14)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(20, 50)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+return fig
+9
+
+--- Page 10 ---
+4. Optimización de Agregados (Mixture-proportioning)
+4.1 Variables de Decisión del Solver
+# Variables que el Solver optimiza
+VARIABLES_DECISION = {
+'coarse_pct': {
+'descripcion': 'Porcentaje de agregado grueso',
+'celda': 'D19',
+'valor_inicial': 59.12,
+'rango': (0, 100)
+    },
+'fine_pct': {
+'descripcion': 'Porcentaje de agregado fino',
+'celda': 'F19', 
+'valor_inicial': 40.88,
+'rango': (0, 100)
+    },
+'intermediate_pct': {
+'descripcion': 'Porcentaje de agregado intermedio',
+'celda': 'H19',
+'valor_inicial': 0,
+'rango': (0, 100)
+    }
+}
+# Restricción fundamental
+# coarse_pct + fine_pct + intermediate_pct = 100
+10
+
+--- Page 11 ---
+4.2 Función Objetivo: Power 45
+defcalcular_power_45(tamiz_mm):
+"""
+    Power 45 calcula el valor ideal de % pasante
+    basado en la potencia 0.45 del tamaño del tamiz
+    """
+return tamiz_mm **0.45
+defcurva_ideal_power_45(tamano_max_nominal):
+"""
+    Genera la curva ideal de gradación Power 45
+    Para un TMN dado, la curva va de 0 a 100%
+    """
+    tamices_mm = [50, 37.5, 25, 19.5, 12.5, 9.5, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15, 0.0
+75]
+# Valores ^0.45 de los tamices
+    valores_45 = [t**0.45for t in tamices_mm]
+    max_valor = tamano_max_nominal **0.45
+    min_valor = 0.075**0.45
+# Normalizar a escala 0-100
+    ideal = []
+for v in valores_45:
+if v >= max_valor:
+            ideal.append(100)
+else:
+            pct = ((v - min_valor) / (max_valor - min_valor)) * 100
+            ideal.append(max(0, pct))
+return tamices_mm, ideal
+defcalcular_error_power_45(mezcla_pct, ideal_pct):
+"""
+    Error = Σ(mezcla - ideal)²
+    O simplemente: Σ|diferencias|
+    """
+    error = sum((m - i)**2for m, i inzip(mezcla_pct, ideal_pct))
+return error
+11
+
+--- Page 12 ---
+4.3 Restricciones Haystack (C33)
+# Límites granulométricos Haystack según ASTM C33
+RESTRICCIONES_HAYSTACK = {
+# tamiz_mm: (limite_inferior, limite_superior)
+50: (100, 100),      # 2"
+37.5: (100, 100),    # 1-1/2"
+25: (100, 100),      # 1" (puede variar según TMN)
+19.5: (100, 100),    # 3/4"
+12.5: (100, 100),    # 1/2"
+9.5: (100, 100),     # 3/8"
+4.75: (95, 100),     # #4
+2.36: (80, 100),     # #8
+1.18: (50, 85),      # #16
+0.6: (25, 60),       # #30
+0.3: (10, 30),       # #50
+0.15: (2, 10),       # #100
+0.075: (0, 0)        # #200
+}
+4.4 Restricciones Tarantula
+# Restricciones Tarantula para % retenido
+RESTRICCIONES_TARANTULA = {
+# tamiz: (limite_alto, limite_bajo)
+'1-1/2"': (0, 0),
+'1"': (16, 0),
+'3/4"': (20, 0),
+'1/2"': (20, 4),
+'3/8"': (20, 4),
+'#4': (20, 4),
+'#8': (12, 0),
+'#16': (12, 0),
+'#30': (20, 4),
+'#50': (20, 4),
+'#100': (10, 0),
+'#200': (0, 0)
+}
+defevaluar_tarantula(mezcla_retenido):
+"""
+    Calcula el error Tarantula
+    Error = Σ(violaciones de límites)
+    """
+    error_alto = 0
+    error_bajo = 0
+for tamiz, (alto, bajo) in RESTRICCIONES_TARANTULA.items():
+        retenido = mezcla_retenido.get(tamiz, 0)
+if retenido > alto:
+            error_alto += retenido - alto
+if retenido < bajo:
+            error_bajo += bajo - retenido
+return error_alto + error_bajo
+12
+
+--- Page 13 ---
+4.5 Restricciones de Shilstone en Optimización
+# Restricciones adicionales basadas en Shilstone
+RESTRICCIONES_SHILSTONE = {
+'fine_fraction': {
+'descripcion': 'Fracción fina (#30 a #200)',
+'rango': (24, 34),  # % de la mezcla
+'calculo': 'sum(retenido[#30:#200])'
+    },
+'coarse_fraction': {
+'descripcion': 'Fracción gruesa (3/4" a #30)',
+'rango': (15, None),  # mínimo 15%
+'calculo': 'sum(retenido[3/4":#30])'
+    }
+}
+4.6 Problema de Optimización Completo
+"""
+PROBLEMA DE OPTIMIZACIÓN
+Minimizar: Error_Power45 + λ * Error_Tarantula
+Sujeto a:
+1. coarse_pct + fine_pct + intermediate_pct = 100
+2. 0 ≤ coarse_pct ≤ 100
+3. 0 ≤ fine_pct ≤ 100
+4. 0 ≤ intermediate_pct ≤ 100
+5. Restricciones Haystack: lower[i] ≤ mezcla[i] ≤ upper[i]
+6. Restricciones Tarantula: lower[i] ≤ retenido[i] ≤ upper[i]
+7. Restricciones Shilstone: 24 ≤ finos ≤ 34, gruesos ≥ 15
+TIPO DE PROBLEMA: NO LINEAL
+- La función objetivo incluye términos cuadráticos
+- Las restricciones son lineales
+"""
+5. Decisión Técnica: scipy.optimize vs PuLP
+5.1 Análisis del Problema
+Característica Valor
+Tipo de problema No lineal (función objetivo cuadrática)
+Número de variables 3 (porcentajes de agregados)
+Restricciones de igualdad 1 (suma = 100%)
+Restricciones de desigualdad ~30 (límites granulométricos)
+Naturaleza de restricciones Lineales
+13
+
+--- Page 14 ---
+5.2 Recomendación: scipy.optimize
+Justificación:
+1. Función objetivo no lineal: PuLP solo soporta programación lineal
+2. scipy.optimize.minimize soporta:
+- Métodos: SLSQP, trust-constr, COBYLA
+- Restricciones no lineales
+- Bounds en variables
+3. Número pequeño de variables: 3 variables es trivial para scipy
+4. Flexibilidad: Permite ajustar pesos en función multiobjetivo
+14
+
+--- Page 15 ---
+5.3 Implementación Recomendada
+fromscipy.optimizeimport minimize, Bounds, LinearConstraint
+importnumpyasnp
+defobjetivo(x, granulometrias, ideal_power45, peso_tarantula=0.5):
+"""
+    Función objetivo multiobjetivo
+    x = [coarse_pct, fine_pct, intermediate_pct]
+    """
+# Calcular mezcla granulométrica
+    mezcla = calcular_mezcla(x, granulometrias)
+# Error Power 45
+    error_p45 = calcular_error_power_45(mezcla, ideal_power45)
+# Error Tarantula
+    retenido = calcular_retenido(mezcla)
+    error_tar = evaluar_tarantula(retenido)
+return error_p45 + peso_tarantula * error_tar
+defoptimizar_agregados(granulometrias, tmn=25):
+"""
+    Optimiza las proporciones de agregados
+    """
+# Curva ideal
+    tamices, ideal = curva_ideal_power_45(tmn)
+# Punto inicial
+    x0 = [50, 50, 0]  # Distribución inicial
+# Límites
+    bounds = Bounds([0, 0, 0], [100, 100, 100])
+# Restricción: suma = 100
+    constraint_sum = LinearConstraint([[1, 1, 1]], [100], [100])
+# Optimizar
+    resultado = minimize(
+        objetivo,
+        x0,
+        args=(granulometrias, ideal),
+        method='SLSQP',
+        bounds=bounds,
+        constraints={'type': 'eq', 'fun': lambda x: sum(x) - 100}
+    )
+return resultado
+15
+
+--- Page 16 ---
+6. Formato del Informe PDF (Informe N| 936)
+6.1 Estructura del PDF (6 páginas)
+Página 1: Portada y Antecedentes
+PDF_PAGINA_1 = {
+'titulo': 'INFORME DE DOSIFICACIÓN',
+'codigo': 'LAC-FC-13_3',
+'secciones': [
+        {
+'titulo': 'ANTECEDENTES GENERALES',
+'campos': [
+                ('Informe N°', 'numero_informe'),
+                ('Solicitado por', 'cliente'),
+                ('Dirigido a', 'contacto'),
+                ('Obra', 'nombre_obra'),
+                ('Fecha de Emisión', 'fecha')
+            ]
+        },
+        {
+'titulo': 'ANTECEDENTES ESPECÍFICOS',
+'campos': [
+                ('Dosificación de Hormigon', 'codigo_dosis'),
+                ('Resistencia de Dosificación', 'fc_mpa'),
+                ('Tipo de Áridos', 'tipo_aridos'),
+                ('Sucursal', 'sucursal'),
+                ('Confección del hormigón', 'calidad'),
+                ('Consistencia', 'consistencia'),
+                ('Tipo de Cemento', 'cemento'),
+                ('Tamaño Máximo del Árido', 'tmn_mm'),
+                ('Fracción Defectuosa', 'fraccion_def'),
+                ('Asentamiento', 'asentamiento'),
+                ('Contenido de Aire', 'aire_pct')
+            ]
+        }
+    ]
+}
+Página 2: Caracterización de Áridos (Parte 1)
+PDF_PAGINA_2 = {
+'titulo': 'CARACTERIZACIÓN DE LOS ÁRIDOS (*)',
+'tabla_granulometria': {
+'columnas': ['Tamiz mm', 'ASTM', 'Árido 1', 'Árido 2', 'Árido 3'],
+'filas': TAMICES + ['FxL', 'DRSSS', 'DRS', 'DN', 'Absorción', 
+'Suelta', 'Compactada', 'Chancado', 'Laja']
+    },
+'ensayos': ['Impurezas', 'Desmenuzable', 'Desintegración']
+}
+16
+
+--- Page 17 ---
+Página 3: Caracterización de Áridos (Parte 2)
+PDF_PAGINA_3 = {
+'ensayos_adicionales': [
+'Índice de Trituración',
+'Carbón y Lignito', 
+'Reactividad Álcalis-Agregado',
+'Coeficiente de forma'
+    ],
+'referencias': 'Números de informes de laboratorio externo'
+}
+Página 4: Memoria de Cálculo
+PDF_PAGINA_4 = {
+'titulo': 'MEMORIA DE CÁLCULO',
+'secciones': [
+        ('a', 'Resistencia especificada', 'fc'),
+        ('b', 'Cantidad de cemento por m³', 'C'),
+        ('c', 'Razón agua cemento', 'A/C'),
+        ('d', 'Agua de amasado', 'A'),
+        ('e', 'Aire ocluido', 'ha'),
+        ('f', 'Compacidad', 'z'),
+        ('g', 'Porcentaje volumétrico cemento', 'c'),
+        ('h', 'Porcentaje de áridos y cemento', 'proporciones'),
+        ('i', 'Cantidad en kg/m³', 'cantidades')
+    ]
+}
+Página 5: Proporciones y Banda de Trabajo
+PDF_PAGINA_5 = {
+'secciones': [
+        ('j', 'Proporciones de áridos'),
+        ('k', 'Agua de absorción'),
+        ('l', 'Agua total'),
+        ('m', 'Banda de trabajo - % en peso'),
+        ('n', 'Comprobación de mezcla - % en volumen')
+    ],
+'tablas': {
+'banda_trabajo': {
+'columnas': ['Tamiz', 'G.CH', 'G.ROD', 'Arena', 'Mezcla', 'B.Inf', 
+'B.Sup']
+        }
+    }
+}
+17
+
+--- Page 18 ---
+Página 6: Resumen y Anexo Shilstone
+PDF_PAGINA_6 = {
+'seccion_1': {
+'titulo': 'RESUMEN DE DOSIFICACIÓN',
+'descripcion': 'Para 1m³ de hormigón fresco a elaborar se requiere:',
+'materiales': ['Grava Chancada', 'Grava Rodada', 'Arena', 
+'Cemento', 'Agua Total', 'Aditivos']
+    },
+'seccion_2': {
+'titulo': 'ANEXO I - OPTIMIZACIÓN MÉTODO SHILSTONE',
+'calculos': [
+            ('1', 'Factor de Grosor (CF)', ['Pasa 3/8"', 'Pasa N°8', 'CF']),
+            ('2', 'Factor de Trabajabilidad (Wadj)', ['W', 'Adj', 'FTC']),
+            ('3', 'Factor de Mortero (FM)', ['Cc', 'Pec', 'PA total', 'FM'])
+        ],
+'grafico': 'Gráfico Shilstone con zonas y punto de mezcla'
+    }
+}
+18
+
+--- Page 19 ---
+7. Resumen de Datos para Implementación
+7.1 Inputs del Usuario
+INPUTS_USUARIO = {
+# Proyecto
+'nombre_proyecto': str,
+'cliente': str,
+'obra': str,
+'fecha': date,
+# Diseño
+'resistencia_fc': float,  # MPa
+'desviacion_std': float,  # MPa
+'fraccion_defectuosa': float,  # 0.1 = 10%
+'consistencia': str,  # Blanda, Plástica, etc.
+'asentamiento': str,  # "6 ± 2 cm"
+'aire_pct': float,  # %
+# Cemento
+'tipo_cemento': str,
+'densidad_cemento': float,  # kg/m³
+# Áridos (hasta 3)
+'aridos': [
+        {
+'nombre': str,
+'tipo': str,  # Chancado, Rodado, Arena
+'DRS': float,
+'DRSSS': float,
+'absorcion': float,
+'granulometria': list # 12 valores (% que pasa)
+        }
+    ],
+# Aditivos
+'aditivos': [
+        {'nombre': str, 'dosis': float}  # dosis como fracción del cemento
+    ]
+}
+19
+
+--- Page 20 ---
+7.2 Outputs Principales
+OUTPUTS = {
+'faury_joisel': {
+'fd': float,  # Resistencia media MPa
+'cemento': float,  # kg/m³
+'ac_ratio': float,
+'agua_amasado': float,  # lt/m³
+'compacidad': float,
+'proporciones': dict,  # {material: fracción}
+'cantidades': dict,  # {material: kg/m³}
+'agua_total': float
+    },
+'shilstone': {
+'CF': float,
+'W': float,
+'Wadj': float,
+'FM': float,
+'zona': str
+    },
+'optimizacion': {
+'proporciones_optimas': list,
+'error_power45': float,
+'error_tarantula': float,
+'mezcla_granulometria': list
+    },
+'granulometria': {
+'mezcla': list,
+'banda_trabajo': list # [(inf, sup), ...]
+    }
+}
+20
+
+--- Page 21 ---
+8. Pseudocódigo Principal
+defdisenar_mezcla(inputs):
+"""
+    Flujo principal del diseño de mezcla
+    """
+# 1. Método Faury-Joisel
+    fd, fd_kgcm2 = calcular_resistencia_media(
+        inputs['resistencia_fc'],
+        inputs['desviacion_std'],
+        inputs['fraccion_defectuosa']
+    )
+    cemento = calcular_cemento(fd_kgcm2)
+    ac = obtener_ac(fd_kgcm2)
+    agua = calcular_agua_amasado(ac, cemento)
+    ha = obtener_aire_ocluido(inputs['tmn'])
+    z = calcular_compacidad(ha, agua)
+    c_vol = calcular_porcentaje_cemento(cemento, z)
+# 2. Optimización de agregados
+    resultado_opt = optimizar_agregados(
+        [a['granulometria'] for a in inputs['aridos']],
+        inputs['tmn']
+    )
+    proporciones = resultado_opt.x
+# 3. Calcular cantidades
+    cantidades = calcular_cantidades_kg(
+        proporciones, z,
+        {a['nombre']: a['DRS'] for a in inputs['aridos']}
+    )
+# 4. Granulometría de mezcla
+    mezcla = calcular_granulometria_mezcla(
+        proporciones,
+        {a['nombre']: a['granulometria'] for a in inputs['aridos']}
+    )
+    banda = calcular_banda_trabajo(mezcla)
+# 5. Shilstone
+    CF = calcular_CF(mezcla[6], mezcla[8])  # 3/8" y #8
+    W = calcular_W(mezcla[8])
+    Wadj = calcular_Wadj(W, calcular_ajuste(cemento))
+    FM = calcular_FM(cemento, 3.14, mezcla[8], sum(cantidades.values()), 
+                     inputs['aridos'][-1]['DRSSS']/1000, agua, 0, ha)
+# 6. Generar resultados
+return {
+'faury_joisel': {...},
+'shilstone': {'CF': CF, 'W': W, 'Wadj': Wadj, 'FM': FM},
+'optimizacion': proporciones,
+'granulometria': {'mezcla': mezcla, 'banda': banda},
+'cantidades': cantidades
+    }
+21
+
+--- Page 22 ---
+9. Notas Adicionales
+9.1 Unidades
+Resistencia: MPa (1 MPa ≈ 10.2 kg/cm²)
+Densidades: kg/m³
+Agua: lt/m³
+Porcentajes: expresados como fracción (0-1) o porcentaje (0-100) según contexto
+9.2 Tablas de Referencia
+Las tablas 21, 22, 23, 24 mencionadas en el Excel corresponden a:
+- T abla 21-22: Parámetros M y N para curva Faury según consistencia
+- T abla 23: Factor t según fracción defectuosa
+- T abla 24: Coeficiente de eficiencia del cemento
+9.3 Validaciones Requeridas
+Suma de proporciones = 100%
+Granulometría dentro de banda de trabajo
+CF y Wadj en zona aceptable de Shilstone
+Cumplimiento de restricciones T arantula
+Cumplimiento de límites Haystack/C33
+• 
+• 
+• 
+• 
+1. 
+2. 
+3. 
+4. 
+5. 
+22
+
+
+--- Analyzing PDF: NCH 170.pdf ---
+Total Pages: 44
+
+--- Page 1 ---
+
+
+--- Page 2 ---
+
+
+--- Page 3 ---
+
+
+--- Page 4 ---
+
+
+--- Page 5 ---
+
+
+
+--- Analyzing Excel: Mixture-proportioning-2021-06 (2).xlsx ---
+Sheet Names: ['0 Instructions', '1 Aggregate system', '2 Paste quality', '3 Paste Quantity', '4 Agg Analysis']
+
+Sample Data from sheet '0 Instructions':
+                                              Unnamed: 0                                  Unnamed: 1
+0  While we have tried to make this system fool-proof -                                          NaN
+1              it still has to be operated with thought…                                         NaN
+2                                                    NaN                                         NaN
+3                                         Note the rules                                         NaN
+4                                                    NaN  Inputs go in cells with blue colored text 
+5                                                    NaN                   Don’t touch anything else
+6                                                    NaN              Output is in yellow highlights
+7                                                    NaN                                         NaN
+8                    Page 1 Work on the aggregate system                                         NaN
+9                                                    NaN           Enter date and project at the top
+
+Sample Data from sheet '1 Aggregate system':
+     Unnamed: 0 Unnamed: 1  Unnamed: 2           Unnamed: 3  Unnamed: 4   Aggregate System  Unnamed: 6    Unnamed: 7
+0           NaN        NaN         NaN                  NaN         NaN                NaN         NaN           NaN
+1       Project  Gravel 1"         NaN  2017-05-15 00:00:00         NaN                NaN         NaN           NaN
+2           NaN        NaN         NaN                  NaN         NaN                NaN         NaN           NaN
+3     Materials        NaN         NaN                  NaN         NaN   Blue= Input Data         NaN           NaN
+4           NaN        NaN         NaN                 S.G.         NaN  Red = Calculation         NaN  Don’t touch!
+5  Cementitious        NaN  427.732881                  NaN         NaN    Yellow = Output         NaN  Don’t touch!
+6    Coarse Agg        NaN      Coarse                 2.72         NaN    Black = Working         NaN  Don’t touch!
+7      Fine Agg        NaN        Fine                 2.66         NaN                NaN         NaN           NaN
+8  Intermediate        NaN         Int                    1         NaN                NaN         NaN           NaN
+
+--- Analyzing Excel: INF-DOH-1841_G30.xlsx ---
+Sheet Names: ['Plantilla Dosif.', 'PAUTA', 'Informe N| 936']
+
+Sample Data from sheet 'Plantilla Dosif.':
+   Unnamed: 0                         Unnamed: 1                Unnamed: 2              Unnamed: 3  Unnamed: 4  Unnamed: 5  Unnamed: 6  Unnamed: 7  Unnamed: 8  Unnamed: 9 Unnamed: 10
+0         NaN                                NaN                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+1         NaN  Dosificación del Hormigón tipo :                        NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+2         NaN                                NaN                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+3         NaN                            G30  -6                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+4         NaN                                NaN                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+5         NaN                          PROYECTO:                       NaN  INGRESO - PUNTA ARENAS         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+6         NaN                                NaN                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+7         NaN                                NaN                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+8         NaN                                  1  ANTECEDENTES ESPECÍFICOS                     NaN         NaN         NaN         NaN         NaN         NaN         NaN         NaN
+9         NaN                                NaN                       NaN                     NaN         NaN         NaN         NaN         NaN         NaN         NaN            
+
+Sample Data from sheet 'PAUTA':
+   Unnamed: 0 Unnamed: 1 Unnamed: 2  Unnamed: 3
+0         NaN        NaN        NaN         NaN
+1         NaN        NaN        NaN         NaN
+2         NaN        NaN        NaN         NaN
+3         NaN        NaN  Pasa 3/8"   62.870007
+4         NaN        NaN   Pasa N°8   34.685890
+5         NaN        NaN        NaN         NaN
+6         NaN          Q  37.129993         NaN
+7         NaN          I  28.184117         NaN
+
