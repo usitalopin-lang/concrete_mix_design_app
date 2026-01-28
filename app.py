@@ -44,6 +44,8 @@ from config.config import (
     TAMICES_MM, TAMICES_ASTM, CONSISTENCIAS, TIPOS_CEMENTO,
     TMN_OPCIONES, DEFAULTS, EXPOSICION_OPCIONES
 )
+from modules.auth import login_screen, logout
+from modules.database import guardar_proyecto, cargar_proyectos_usuario
 
 # Configuración de la página
 st.set_page_config(
@@ -98,6 +100,10 @@ def inicializar_estado():
         st.session_state.datos_completos = {}
     if 'aridos_config' not in st.session_state:
         st.session_state.aridos_config = []
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user_email' not in st.session_state:
+        st.session_state.user_email = None
 
 
 def sidebar_inputs():
@@ -107,7 +113,44 @@ def sidebar_inputs():
     # Gestión de Archivos
     st.sidebar.markdown("### 💾 Gestión de Proyecto")
     
-    uploaded_file = st.sidebar.file_uploader("Cargar Proyecto", type=['json'])
+    # Cloud Save/Load
+    with st.sidebar.expander("☁️ Nube", expanded=False):
+        if st.button("Guardar en Nube", use_container_width=True):
+             if st.session_state.get('datos_completos'):
+                 if guardar_proyecto(st.session_state.datos_completos, st.session_state.user_email):
+                     st.toast("✅ Proyecto guardado en la nube")
+                 else:
+                     st.toast("❌ Error al guardar")
+             else:
+                 st.toast("⚠️ No hay datos para guardar (calcula primero)")
+        
+        proyectos_nube = cargar_proyectos_usuario(st.session_state.user_email)
+        if proyectos_nube:
+            st.markdown("---")
+            opciones_proy = [f"{p['timestamp']} - {p['nombre_proyecto']}" for p in proyectos_nube]
+            seleccion = st.selectbox("Cargar desde Nube", ["Seleccionar..."] + opciones_proy)
+            
+            if seleccion != "Seleccionar...":
+                 idx = opciones_proy.index(seleccion)
+                 proyecto_elegido = proyectos_nube[idx]
+                 if st.button("Cargar", key="btn_load_cloud"):
+                     try:
+                         data = json.loads(proyecto_elegido['datos_json'])
+                         # Cargar datos
+                         for key, value in data.items():
+                            if key in ['fecha']:
+                                try:
+                                    st.session_state[key] = datetime.strptime(value, '%Y-%m-%d').date()
+                                except:
+                                    pass
+                            else:
+                                st.session_state[key] = value
+                         st.success("Proyecto cargado!")
+                         st.rerun()
+                     except Exception as e:
+                         st.error(f"Error al cargar: {e}")
+
+    uploaded_file = st.sidebar.file_uploader("Cargar Local (JSON)", type=['json'])
     if uploaded_file is not None:
         try:
             data = json.load(uploaded_file)
@@ -363,6 +406,13 @@ def sidebar_inputs():
             file_name=f"{nombre_archivo}.json",
             mime="application/json"
         )
+    
+    # User Info Footer sidebar
+    if st.session_state.get('authenticated'):
+        st.sidebar.markdown("---")
+        st.sidebar.markdown(f"👤 **{st.session_state.get('user_name', 'Usuario')}**")
+        if st.sidebar.button("Cerrar Sesión"):
+            logout()
     
     return {
         'numero_informe': numero_informe,
@@ -964,6 +1014,11 @@ def mostrar_ayuda():
 def main():
     """Función principal de la aplicación."""
     inicializar_estado()
+    
+    # Gatekeeper: Login Check
+    if not st.session_state.get('authenticated'):
+        login_screen()
+        return
     
     # Encabezado
     st.markdown('<p class="main-header">🏗️ Diseño de Mezclas de Concreto</p>', unsafe_allow_html=True)
