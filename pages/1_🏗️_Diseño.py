@@ -10,8 +10,8 @@ from modules.graphics import (
     crear_grafico_power45_interactivo, crear_grafico_tarantula_interactivo,
     crear_grafico_haystack_interactivo, crear_grafico_gradaciones_individuales, mostrar_resultados_optimizacion
 )
-from modules.pdf_generator import generar_descarga_pdf
-from modules.gemini_client import seccion_gemini, verificar_conexion
+from modules.pdf_generator import generar_reporte_pdf
+from modules.gemini_integration import verificar_conexion
 import pandas as pd
 import io
 from datetime import datetime
@@ -226,8 +226,26 @@ with tab4:
 
 with tab5:
     if st.session_state.datos_completos:
-        seccion_gemini(st.session_state.datos_completos)
+        st.markdown("### 🤖 Consultor IA")
+        st.info("💡 **Próximamente:** Análisis inteligente de tu diseño con Gemini AI")
+        
+        # Placeholder para futuro consultor IA
+        with st.expander("📋 Vista Previa de Datos"):
+            st.json(st.session_state.datos_completos)
+        
         st.markdown("---")
-        generar_descarga_pdf(st.session_state.datos_completos, st.session_state.resultados_shilstone)
+        st.markdown("### 📄 Exportar Reporte")
+        if st.button("📥 Generar PDF", type="primary"):
+            try:
+                pdf_bytes = generar_reporte_pdf(st.session_state.datos_completos)
+                st.download_button(
+                    label="⬇️ Descargar PDF",
+                    data=pdf_bytes,
+                    file_name=f"reporte_diseno_{st.session_state.datos_completos.get('proyecto', {}).get('nombre', 'proyecto')}.pdf",
+                    mime="application/pdf"
+                )
+                st.success("✅ PDF generado correctamente")
+            except Exception as e:
+                st.error(f"Error generando PDF: {e}")
     else:
         st.info("Calcula diseño primero.")
