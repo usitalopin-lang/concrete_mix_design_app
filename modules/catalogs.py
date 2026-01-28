@@ -54,6 +54,13 @@ def obtener_cementos():
         conn = obtener_conexion()
         df = conn.read(worksheet=SHEET_CEMENTOS, ttl=0)
         
+        # Mapeo
+        rename_map = {
+            'Peso especifico (Densidad T/m3)': 'Densidad',
+             # Otros si fueran necesarios
+        }
+        df.rename(columns=rename_map, inplace=True)
+        
         # Limpiar decimales
         df = limpiar_decimales(df, ['Densidad'])
 
@@ -73,6 +80,16 @@ def obtener_aridos():
         conn = obtener_conexion()
         df = conn.read(worksheet=SHEET_ARIDOS, ttl=0)
         
+        # Mapeo de columnas histórico -> nombres simples
+        rename_map = {
+            'Densidad Real Seca-DRS (Kg/m3)': 'Densidad_Real',
+            'Densidad Real SSS-DRSS (Kg/m3)': 'Densidad_SSS',
+            'Absorción de Agua (%)': 'Absorcion',
+            # Si agregaste 'Nombre' al final, no necesitamos mapear, pero si quisieras usar 'Identificación de Planta' u otra:
+            # 'Identificación de Planta': 'Nombre'  <-- Solo si no agregaste la columna Nombre
+        }
+        df.rename(columns=rename_map, inplace=True)
+
         # Limpiar decimales
         df = limpiar_decimales(df, ['Densidad_Real', 'Densidad_SSS', 'Absorcion'])
 
