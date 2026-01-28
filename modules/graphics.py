@@ -99,7 +99,8 @@ def mostrar_resultados_faury(resultados: Dict):
                 x=x_sup, y=y_sup,
                 mode='lines',
                 name='Límite Superior',
-                line=dict(color='red', width=2, dash='dash')
+                line=dict(color='red', width=2, dash='dash'),
+                hovertemplate="Sup: %{y:.1f}%<extra></extra>"
             ))
             
         # Banda Inferior
@@ -111,7 +112,8 @@ def mostrar_resultados_faury(resultados: Dict):
                 x=x_inf, y=y_inf,
                 mode='lines',
                 name='Límite Inferior',
-                line=dict(color='red', width=2, dash='dash')
+                line=dict(color='red', width=2, dash='dash'),
+                hovertemplate="Inf: %{y:.1f}%<extra></extra>"
             ))
 
         # Curva Mezcla
@@ -121,22 +123,36 @@ def mostrar_resultados_faury(resultados: Dict):
             mode='lines+markers',
             name='Mezcla Diseñada',
             line=dict(color='#1f77b4', width=3),
-            marker=dict(size=6)
+            marker=dict(size=6),
+            hovertemplate="Mezcla: %{y:.1f}%<extra></extra>"
         ))
         
         fig_gran.update_layout(
             title="Curva Granulométrica (Escala Logarítmica)",
             xaxis=dict(
-                title="Apertura (mm)", 
+                title="Abertura (mm)", 
                 type="log", 
-                autorange="reversed", # Mayor a menor apertura
-                tickvals=[37.5, 19.0, 9.5, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15, 0.075],
-                ticktext=['1.5"', '3/4"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+                # autorange="reversed", # Comentado para match referencia (Menor -> Mayor izq->der)
+                tickvals=[0.075, 0.15, 0.3, 0.6, 1.18, 2.36, 4.75, 9.5, 19.0, 37.5],
+                ticktext=['#200', '#100', '#50', '#30', '#16', '#8', '#4', '3/8"', '3/4"', '1.5"'],
+                gridcolor='#e6e6e6'
             ),
-            yaxis=dict(title="% Pasante Acumulado", range=[0, 105]),
-            template="plotly_white",
+            yaxis=dict(
+                title="% Pasante", 
+                range=[0, 105],
+                gridcolor='#e6e6e6'
+            ),
+            plot_bgcolor='white',
             hovermode="x unified",
-            height=500
+            height=500,
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.2,
+                xanchor="center",
+                x=0.5
+            )
         )
         st.plotly_chart(fig_gran, use_container_width=True)
 
