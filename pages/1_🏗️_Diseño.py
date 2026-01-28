@@ -10,8 +10,18 @@ from modules.graphics import (
 from modules.power45 import generar_curva_ideal_power45
 from modules.optimization import optimizar_agregados
 from modules import gemini_integration as gemini
+from modules.utils_ui import inicializar_estado, sidebar_user_info
 
 st.set_page_config(page_title="Diseño Hormigón", layout="wide")
+
+inicializar_estado()
+
+# Gatekeeper de autenticación
+if not st.session_state.get('authenticated'):
+    st.warning("⚠️ Debes iniciar sesión en la página principal.")
+    st.stop()
+
+sidebar_user_info()
 
 if 'datos_completos' not in st.session_state: st.session_state.datos_completos = {}
 if 'analisis_ia' not in st.session_state: st.session_state.analisis_ia = None
