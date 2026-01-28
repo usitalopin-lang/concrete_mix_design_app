@@ -601,22 +601,6 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
     # 15. Banda de trabajo
     banda_trabajo = calcular_banda_trabajo(mezcla_granulometria)
     
-    return {
-        'resistencia': {
-            'fd_mpa': round(fd_mpa, 2),
-            'fd_kgcm2': fd_kgcm2,
-            'coef_t': obtener_coeficiente_t(fraccion_def)
-        },
-        'cemento': {
-            'cantidad': cemento,
-            'densidad': densidad_cemento
-        },
-        'agua_cemento': {
-            'razon': round(ac_ratio, 3),
-            'agua_amasado': round(agua_amasado, 1),
-            'agua_absorcion': round(agua_absorcion, 1),
-            'agua_total': round(agua_total, 1)
-        },
     # Mapeo de claves internas a nombres reales
     nombres_reales = {}
     if num_aridos == 2:
@@ -645,15 +629,19 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
         props_vol_final[new_k] = round(v, 4)
 
     return {
+        'resistencia': {
+            'fd_mpa': round(fd_mpa, 2),
+            'fd_kgcm2': fd_kgcm2,
+            'coef_t': obtener_coeficiente_t(fraccion_def)
+        },
         'cemento': {
-            'cantidad': round(c, 1),
-            'tipo': cemento['tipo'],
-            'densidad': cemento['densidad']
+            'cantidad': cemento,
+            'densidad': densidad_cemento
         },
         'agua_cemento': {
-            'razon': round(ac, 3), # Usar 'razon', no 'razon_ac'
+            'razon': round(ac, 3), 
             'agua_amasado': round(a, 1),
-            'agua_total': round(a, 1)  # Asumimos sin absorción extra inicial
+            'agua_total': round(a, 1)
         },
         'aire': {
             'volumen': round(aire, 1),
@@ -663,7 +651,6 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
         'proporciones_volumetricas': props_vol_final,
         'cantidades_kg_m3': cantidades_final,
         'proporciones_peso': props_peso_final,
-        'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
         'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
         'banda_trabajo': [(round(inf, 1), round(sup, 1)) for inf, sup in banda_trabajo],
         'aditivos': aditivos_res,
