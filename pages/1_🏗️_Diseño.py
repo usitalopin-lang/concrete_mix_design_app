@@ -1,7 +1,8 @@
 import streamlit as st
 from modules.utils_ui import inicializar_estado, sidebar_inputs, input_aridos_ui, sidebar_user_info
 from config.config import DEFAULTS, TAMICES_MM, TAMICES_ASTM
-from modules.calculos import disenar_mezcla_faury, calcular_shilstone_completo
+from modules.faury_joisel import disenar_mezcla_faury
+from modules.shilstone import calcular_shilstone_completo
 from modules.optimization import optimizar_agregados, generar_curva_ideal_power45, evaluar_gradacion
 from modules.charts import (
     crear_grafico_shilstone_interactivo, mostrar_resultados_faury,
