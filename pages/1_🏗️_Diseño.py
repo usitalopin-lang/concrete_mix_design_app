@@ -49,6 +49,48 @@ with tab1:
     st.session_state.aridos_config = aridos
     
     st.markdown("---")
+    
+    # --- NUEVO: Input Proporciones Personalizadas ---
+    usar_personalizado = st.toggle("🔧 Usar Proporciones Personalizadas / Optimizadas")
+    proporciones_custom = None
+    
+    if usar_personalizado:
+        # Verificar si hay optimización disponible
+        opt_available = st.session_state.get('resultados_optimizacion') is not None
+        
+        col_opt1, col_opt2 = st.columns([1, 2])
+        if opt_available:
+             with col_opt1:
+                if st.button("✨ Cargar desde Optimización"):
+                    res_opt = st.session_state.resultados_optimizacion
+                    st.session_state.custom_props_val = res_opt['proporciones']
+                    st.toast("Proporciones cargadas desde optimizador!")
+
+        # Inputs manuales (sliders)
+        num_ar = len(aridos)
+        props_init = st.session_state.get('custom_props_val', [100.0/num_ar]*num_ar)
+        
+        # Ajustar longitud si cambió número de áridos
+        if len(props_init) != num_ar:
+            props_init = [100.0/num_ar]*num_ar
+            
+        proporciones_custom = []
+        st.caption("Ajusta los porcentajes (deben sumar 100% aprox)")
+        
+        cols_p = st.columns(num_ar)
+        for i in range(num_ar):
+            with cols_p[i]:
+                 nombre = aridos[i].get('nombre', f'Árido {i+1}')
+                 val = st.number_input(f"% {nombre}", 0.0, 100.0, float(props_init[i]), step=0.5, key=f"prop_man_{i}")
+                 proporciones_custom.append(val)
+        
+        # Validar suma
+        suma = sum(proporciones_custom)
+        if abs(suma - 100.0) > 1.0:
+            st.warning(f"⚠️ La suma de proporciones es {suma:.1f}%, debería ser 100%")
+    
+    # ---------------------------------------------
+
     if st.button("🔄 Calcular Diseño", type="primary", key="btn_calcular"):
         with st.spinner("Calculando diseño..."):
             try:
@@ -57,7 +99,8 @@ with tab1:
                     params['resistencia_fc'], params['desviacion_std'], params['fraccion_def'],
                     params['consistencia'], params['tmn'], params['densidad_cemento'],
                     aridos, params['aire_porcentaje'], params['condicion_exposicion'],
-                    params['aditivos_config']
+                    params['aditivos_config'],
+                    proporciones_personalizadas=proporciones_custom # Pasamos el override
                 )
                 st.session_state.resultados_faury = res_faury
                 

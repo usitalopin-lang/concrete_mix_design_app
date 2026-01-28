@@ -418,7 +418,8 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
                          tmn: float, densidad_cemento: float,
                          aridos: List[Dict], aire_porcentaje: float = 0.0,
                          condicion_exposicion: str = "Sin riesgo",
-                         aditivos_config: List[Dict] = None) -> Dict:
+                         aditivos_config: List[Dict] = None,
+                         proporciones_personalizadas: List[float] = None) -> Dict:
     """
     Función principal que ejecuta todo el diseño de mezcla por Faury-Joisel.
     
@@ -432,6 +433,8 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
         aridos: Lista de diccionarios con datos de cada árido
         aire_porcentaje: Porcentaje de aire incorporado adicional
         condicion_exposicion: Condición de durabilidad
+        aditivos_config: Lista de aditivos
+        proporciones_personalizadas: Lista [grueso%, fino%] o [g1, g2, fino] (Suma ~100) opcional
     
     Returns:
         Diccionario con todos los resultados del diseño
@@ -450,58 +453,98 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
     # Aplicar restricción de durabilidad (el menor A/C rige)
     ac_ratio = min(ac_ratio_resistencia, max_ac_durabilidad)
     
-    # NUEVO FLUJO:
     # 4. Agua de amasado (por demanda de trabajabilidad ACI)
     # Asentamiento viene en 'consistencia' si es el string mapeado, o necesitamos el asentamiento real
-    # La UI pasa parametros faury parametrizados por consistencia, pero aqui necesitamos el asentamiento para el agua ACI
-    # 'consistencia' aqui es 'Seca', 'Plastica', etc. Mapeamos a rango
     from config.config import CONSISTENCIAS
     rango_asentamiento = CONSISTENCIAS.get(consistencia, '6-9 cm')
     
-    agua_amasado = estimar_agua_amasado(rango_asentamiento, tmn)
+    agua_base = estimar_agua_amasado(rango_asentamiento, tmn)
+    
+    # --- NUEVO: Lógica de Reducción de Agua por Aditivos ---
+    # Los plastificantes permiten lograr el mismo slump con menos agua.
+    reduccion_agua_pct = 0.0
+    
+    if aditivos_config:
+        for ad in aditivos_config:
+            nombre_ad = ad['nombre'].lower()
+            if "superplastificante" in nombre_ad or "hiperplastificante" in nombre_ad:
+                reduccion_agua_pct += 0.12 # 12% reducción moderada conservadora (puede ser hasta 30%)
+            elif "plastificante" in nombre_ad:
+                reduccion_agua_pct += 0.05 # 5% reducción
+                
+    # Limitar reducción máxima (seguridad)
+    reduccion_agua_pct = min(reduccion_agua_pct, 0.30)
+    
+    agua_amasado = agua_base * (1.0 - reduccion_agua_pct)
     
     # 5. Aire ocluido (volumen)
     aire = obtener_aire_ocluido(tmn, aire_porcentaje)
     
     # 2. Cantidad de cemento (Calculado desde agua y A/C, respetando minimos)
-    # Se ignora el cálculo antiguo basado solo en eficiencia
     cemento = calcular_cemento_por_agua(agua_amasado, ac_ratio, min_cemento_durabilidad)
     
-    # NUEVO: Calcular Aditivos
+    # Calcular Aditivos
     aditivos_res = []
     volumen_aditivos_lt = 0.0
     
     if aditivos_config:
         for ad in aditivos_config:
             nombre = ad['nombre']
-            dosis = ad['dosis_pct']
+            dosis_pct = ad['dosis_pct']
             densidad = ad['densidad_kg_lt']
             
-            peso_ad = cemento * (dosis / 100.0)
+            # CUIDADO: La dosis suele ser % del peso de cemento
+            peso_ad = cemento * (dosis_pct / 100.0)
             vol_ad = peso_ad / densidad
             
             aditivos_res.append({
                 'nombre': nombre,
                 'cantidad_kg': round(peso_ad, 3),
                 'volumen_lt': round(vol_ad, 3),
-                'dosis_pct': dosis
+                'dosis_pct': dosis_pct
             })
             volumen_aditivos_lt += vol_ad
 
     # 6. Compacidad (Ajustada por aditivos)
-    # z = Volumen Absoluto Cemento + Volumen Absoluto Áridos
-    # z = 1000 litros - Agua - Aire - Aditivos
-    
     volumen_disponible_solidos = 1000.0 - agua_amasado - aire - volumen_aditivos_lt
     compacidad = volumen_disponible_solidos / 1000.0
-    compacidad = max(compacidad, 0.55) # Safety check
+    compacidad = max(compacidad, 0.55) 
     
     # 7. Porcentaje volumétrico de cemento
     c_vol = calcular_porcentaje_cemento_volumen(cemento, compacidad, densidad_cemento)
     
     # 8. Proporciones volumétricas
     num_aridos = len(aridos)
-    proporciones_vol = calcular_proporciones_faury(tmn, consistencia, c_vol, num_aridos)
+    
+    # --- NUEVO: Override con Proporciones Personalizadas (Optimización) ---
+    if proporciones_personalizadas and len(proporciones_personalizadas) == num_aridos:
+        # Normalizar a 1.0 (suma)
+        total_p = sum(proporciones_personalizadas)
+        props_norm = [p / total_p for p in proporciones_personalizadas]
+        
+        # El volumen total de áridos es (1 - c_vol)
+        # Faury estandar divide en 'grueso' y 'fino' basado en curva.
+        # Aqui asignamos directo.
+        
+        proporciones_vol = {}
+        vol_aridos_total = 1.0 - c_vol
+        
+        if num_aridos == 2:
+            # Asumimos orden [grueso, fino] o [arido1, arido2] según input
+            # La UI suele mandar [grueso, fino]
+            proporciones_vol['grueso'] = vol_aridos_total * props_norm[0]
+            proporciones_vol['fino'] = vol_aridos_total * props_norm[1]
+        elif num_aridos == 3:
+             proporciones_vol['grueso_1'] = vol_aridos_total * props_norm[0]
+             proporciones_vol['grueso_2'] = vol_aridos_total * props_norm[1]
+             proporciones_vol['fino'] = vol_aridos_total * props_norm[2]
+             
+        proporciones_vol['cemento'] = c_vol
+        
+    else:
+        # Cálculo Faury Estándar
+        proporciones_vol = calcular_proporciones_faury(tmn, consistencia, c_vol, num_aridos)
+
     
     # 9. Densidades de áridos
     densidades = {}
