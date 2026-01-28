@@ -49,12 +49,19 @@ def mostrar_resultados_faury(resultados: Dict):
     st.dataframe(df_mat, use_container_width=True, hide_index=True)
     
     # Granulometría de la mezcla
-    if 'granulometria_mezcla' in resultados:
+    if 'granulometria_mezcla' in resultados and resultados['granulometria_mezcla']:
         st.markdown("#### Granulometría de la Mezcla")
-        tamices = ['2"', '1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+        # Usar la longitud real de la granulometría
+        gran_data = resultados['granulometria_mezcla']
+        # Tamices estándar (12 elementos según TAMICES_MM en config)
+        tamices_std = ['1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+        
+        # Ajustar longitud si es necesario
+        tamices = tamices_std[:len(gran_data)]
+        
         df_gran = pd.DataFrame({
             'Tamiz': tamices,
-            '% Pasante': resultados['granulometria_mezcla']
+            '% Pasante': gran_data[:len(tamices)]
         })
         st.dataframe(df_gran, use_container_width=True, hide_index=True)
 
@@ -417,28 +424,33 @@ def mostrar_resultados_optimizacion(resultado: Dict, granulometrias: List[List[f
     curva_ideal, tamices_mm = generar_curva_ideal_power45(tmn)
     mezcla_opt = resultado.get('mezcla_optimizada', [])
     
-    tamices_nombres = ['2"', '1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+    # Tamices estándar (12 elementos)
+    tamices_nombres = ['1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+    
+    # Ajustar longitudes para que coincidan
+    min_len = min(len(tamices_nombres), len(curva_ideal), len(mezcla_opt)) if mezcla_opt else min(len(tamices_nombres), len(curva_ideal))
     
     fig = go.Figure()
     
     # Curva ideal Power45
     fig.add_trace(go.Scatter(
-        x=tamices_nombres,
-        y=curva_ideal,
+        x=tamices_nombres[:min_len],
+        y=curva_ideal[:min_len],
         mode='lines',
         name='Curva Ideal (Power 45)',
         line=dict(color=COLOR_BUENO, width=3, dash='dash')
     ))
     
     # Mezcla optimizada
-    fig.add_trace(go.Scatter(
-        x=tamices_nombres,
-        y=mezcla_opt,
-        mode='lines+markers',
-        name='Mezcla Optimizada',
-        line=dict(color=COLOR_PRIMARIO, width=3),
-        marker=dict(size=8)
-    ))
+    if mezcla_opt:
+        fig.add_trace(go.Scatter(
+            x=tamices_nombres[:min_len],
+            y=mezcla_opt[:min_len],
+            mode='lines+markers',
+            name='Mezcla Optimizada',
+            line=dict(color=COLOR_PRIMARIO, width=3),
+            marker=dict(size=8)
+        ))
     
     fig.update_layout(
         title="Comparación con Curva Ideal Power 45",
