@@ -10,7 +10,7 @@ from modules.graphics import (
 from modules.power45 import generar_curva_ideal_power45
 from modules.optimization import optimizar_agregados
 from modules import gemini_integration as gemini
-from modules.pdf_generator import generar_pdf_informe
+from modules.pdf_generator import generar_reporte_pdf
 import json
 from datetime import datetime
 
@@ -125,7 +125,7 @@ with tab2:
         # Botón PDF
         st.markdown("---")
         if st.button("📄 Generar Informe PDF"):
-            pdf_bytes = generar_pdf_informe(datos)
+            pdf_bytes = generar_reporte_pdf(datos)
             st.download_button(
                 "⬇️ Descargar PDF",
                 pdf_bytes,
