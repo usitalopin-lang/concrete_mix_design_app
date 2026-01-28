@@ -37,9 +37,8 @@ TABLA_AC = {150: 0.80, 200: 0.70, 250: 0.62, 300: 0.55, 350: 0.48, 400: 0.43, 45
 
 TABLA_COEF_T = {0.05: 1.645, 0.10: 1.282, 0.20: 0.842}
 
-PARAMETROS_FAURY = {
-    'Fluida': {'M': 0.32, 'N': 0.20}, 'Blanda': {'M': 0.28, 'N': 0.22},
-    'Plástica':{'M': 0.24, 'N': 0.24}, 'Seca':   {'M': 0.20, 'N': 0.26}
+    'Plástica':{'M': 0.24, 'N': 0.24}, 'Seca':   {'M': 0.20, 'N': 0.26},
+    'Muy Fluida': {'M': 0.36, 'N': 0.18} # Estimación basada en tendencia (Más fluida = mayor M, menor N)
 }
 
 REQUISITOS_DURABILIDAD = {
@@ -56,3 +55,17 @@ TOLERANCIAS_BANDA = {
 }
 
 DEFAULTS = {'fc': 250, 'desviacion': 40, 'densidad_cemento': 3100, 'tmn': 19.0}
+
+# --- Constantes para UI (Restauradas) ---
+CONSISTENCIAS = {
+    'Seca': '0-3 cm',
+    'Plástica': '4-5 cm',
+    'Blanda': '6-9 cm',
+    'Fluida': '10-16 cm',
+    'Muy Fluida': '17-21 cm'
+}
+
+TMN_OPCIONES = [9.5, 12.5, 19.0, 25.0, 37.5, 50.0]
+
+# Generar lista de opciones desde el diccionario
+EXPOSICION_OPCIONES = list(REQUISITOS_DURABILIDAD.keys())
