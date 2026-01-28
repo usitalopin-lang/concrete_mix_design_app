@@ -72,10 +72,33 @@ def guardar_proyecto(datos_proyecto: dict, usuario_email: str) -> bool:
         # Serializar datos complejos a JSON
         datos_json = json.dumps(datos_proyecto, default=str)
         
+        # Extraer KPIs para análisis (Flattening)
+        kpis = {
+            'fc_objetivo': datos_proyecto.get('fc', 0),
+            'cemento_kg': 0,
+            'agua_lt': 0,
+            'razon_ac': 0.0,
+            'densidad_cemento': datos_proyecto.get('densidad_cemento', 0)
+        }
+        
+        # Intentar extraer datos calculados si existen
+        try:
+            faury = datos_proyecto.get('faury_joisel', {})
+            if faury:
+                kpis['cemento_kg'] = faury.get('cemento', {}).get('cantidad', 0)
+                kpis['agua_lt'] = faury.get('agua_cemento', {}).get('agua_total', 0)
+                kpis['razon_ac'] = faury.get('agua_cemento', {}).get('razon', 0)
+        except Exception:
+            pass
+
         nueva_fila = pd.DataFrame([{
             'timestamp': timestamp,
             'usuario': usuario_email,
             'nombre_proyecto': nombre_proyecto,
+            'fc_objetivo': kpis['fc_objetivo'],
+            'cemento_kg': kpis['cemento_kg'],
+            'agua_lt': kpis['agua_lt'],
+            'razon_ac': kpis['razon_ac'],
             'datos_json': datos_json
         }])
         
@@ -117,7 +140,16 @@ def cargar_proyectos_usuario(usuario_email: str) -> list:
         # Asegurar que timestamp se lea bien
         if 'usuario' in df.columns:
              proyectos = df[df['usuario'] == usuario_email].sort_values(by='timestamp', ascending=False)
-             return proyectos[['timestamp', 'nombre_proyecto', 'datos_json']].to_dict('records')
+             
+             # Columnas a retornar (incluyendo KPIs si existen)
+             cols = ['timestamp', 'nombre_proyecto', 'datos_json']
+             kpi_cols = ['fc_objetivo', 'cemento_kg', 'agua_lt', 'razon_ac']
+             
+             for col in kpi_cols:
+                 if col in proyectos.columns:
+                     cols.append(col)
+                     
+             return proyectos[cols].to_dict('records')
         
         return []
         
