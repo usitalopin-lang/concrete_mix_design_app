@@ -96,3 +96,5 @@ def obtener_aditivos():
              df = df[df['Activo'] == True] if 'Activo' in df.columns else df
              return df.to_dict('records')
         return FALLBACK_ADITIVOS
+    except Exception:
+        return FALLBACK_ADITIVOS
