@@ -16,24 +16,16 @@ def cargar_catalogo_aridos():
         # Debug: mostrar columnas originales
         st.info(f"📋 Columnas encontradas en Google Sheets: {list(df.columns)}")
         
-        # Verificar que exista al menos una columna identificadora
-        posibles_nombres = ['Nombre del Árido', 'Nombre', 'nombre', 'Identificación de Planta', 'Material']
-        columna_nombre = None
-        for col in posibles_nombres:
-            if col in df.columns:
-                columna_nombre = col
-                break
-        
-        if columna_nombre is None:
-            st.error(f"❌ No se encontró columna de nombre. Columnas disponibles: {list(df.columns)}")
+        # La columna se llama simplemente 'Nombre' en este sheet
+        if 'Nombre' not in df.columns:
+            st.error(f"❌ No se encontró columna 'Nombre'. Columnas disponibles: {list(df.columns)}")
             return pd.DataFrame()
         
         # Limpiar filas vacías
-        df = df.dropna(subset=[columna_nombre])
+        df = df.dropna(subset=['Nombre'])
         
-        # Si la columna no se llama 'Nombre del Árido', renombrarla
-        if columna_nombre != 'Nombre del Árido':
-            df = df.rename(columns={columna_nombre: 'Nombre del Árido'})
+        # Renombrar 'Nombre' a 'Nombre del Árido' para consistencia interna
+        df = df.rename(columns={'Nombre': 'Nombre del Árido'})
         
         # Renombrar columnas de tamices
         df = df.rename(columns=MAPEO_COLUMNAS_EXCEL)
