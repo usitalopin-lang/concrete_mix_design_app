@@ -617,14 +617,52 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
             'agua_absorcion': round(agua_absorcion, 1),
             'agua_total': round(agua_total, 1)
         },
+    # Mapeo de claves internas a nombres reales
+    nombres_reales = {}
+    if num_aridos == 2:
+        nombres_reales['grueso'] = aridos[0].get('nombre', 'Grueso')
+        nombres_reales['fino'] = aridos[1].get('nombre', 'Fino')
+    elif num_aridos == 3:
+        nombres_reales['grueso_1'] = aridos[0].get('nombre', 'Grueso 1')
+        nombres_reales['grueso_2'] = aridos[1].get('nombre', 'Grueso 2')
+        nombres_reales['fino'] = aridos[2].get('nombre', 'Fino')
+        
+    # Reemplazar claves en diccionarios de resultados
+    cantidades_final = {}
+    props_peso_final = {}
+    props_vol_final = {}
+    
+    for k, v in cantidades.items():
+        new_k = nombres_reales.get(k, k)
+        cantidades_final[new_k] = round(v, 1)
+        
+    for k, v in proporciones_peso.items():
+        new_k = nombres_reales.get(k, k)
+        props_peso_final[new_k] = round(v, 4)
+        
+    for k, v in proporciones_vol.items():
+        new_k = nombres_reales.get(k, k)
+        props_vol_final[new_k] = round(v, 4)
+
+    return {
+        'cemento': {
+            'cantidad': round(c, 1),
+            'tipo': cemento['tipo'],
+            'densidad': cemento['densidad']
+        },
+        'agua_cemento': {
+            'razon': round(ac, 3), # Usar 'razon', no 'razon_ac'
+            'agua_amasado': round(a, 1),
+            'agua_total': round(a, 1)  # Asumimos sin absorción extra inicial
+        },
         'aire': {
             'volumen': round(aire, 1),
             'porcentaje': round(aire / 10, 1)
         },
         'compacidad': round(compacidad, 4),
-        'proporciones_volumetricas': {k: round(v, 4) for k, v in proporciones_vol.items()},
-        'cantidades_kg_m3': {k: round(v, 1) for k, v in cantidades.items()},
-        'proporciones_peso': {k: round(v, 4) for k, v in proporciones_peso.items()},
+        'proporciones_volumetricas': props_vol_final,
+        'cantidades_kg_m3': cantidades_final,
+        'proporciones_peso': props_peso_final,
         'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
         'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
         'banda_trabajo': [(round(inf, 1), round(sup, 1)) for inf, sup in banda_trabajo],

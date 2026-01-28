@@ -59,9 +59,16 @@ def mostrar_resultados_faury(resultados: Dict):
         # Ajustar longitud si es necesario
         tamices = tamices_std[:len(gran_data)]
         
+        # Obtener datos de banda si existen
+        banda = resultados.get('banda_trabajo', [])
+        min_vals = [b[0] for b in banda[:len(tamices)]] if banda else [None]*len(tamices)
+        max_vals = [b[1] for b in banda[:len(tamices)]] if banda else [None]*len(tamices)
+        
         df_gran = pd.DataFrame({
             'Tamiz': tamices,
-            '% Pasante': gran_data[:len(tamices)]
+            '% Pasante': gran_data[:len(tamices)],
+            'Límite Inf': min_vals,
+            'Límite Sup': max_vals
         })
         st.dataframe(df_gran, use_container_width=True, hide_index=True)
 

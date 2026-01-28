@@ -215,12 +215,25 @@ with tab4:
         
         if st.button("🚀 Optimizar Propiedades"):
             try:
-                grans = [a['granulometria'] for a in st.session_state.aridos_config]
+                # Validar que todos los áridos tengan granulometría como lista
+                grans = []
+                for a in st.session_state.aridos_config:
+                    gran = a.get('granulometria', [])
+                    if not isinstance(gran, list):
+                        st.error(f"❌ Error: La granulometría del árido '{a.get('nombre', 'desconocido')}' no es válida. Debe ser una lista de valores.")
+                        st.stop()
+                    if len(gran) != 12:
+                        st.error(f"❌ Error: La granulometría del árido '{a.get('nombre', 'desconocido')}' debe tener exactamente 12 valores (tiene {len(gran)}).")
+                        st.stop()
+                    grans.append(gran)
+                
                 res_opt = optimizar_agregados(grans, params['tmn'], len(grans), p_hay, p_tar, p_shil)
                 st.session_state.resultados_optimizacion = res_opt
                 mostrar_resultados_optimizacion(res_opt, grans, params['tmn'])
             except Exception as e:
                 st.error(f"Error optimización: {e}")
+                import traceback
+                st.code(traceback.format_exc())
     else:
         st.info("Configura áridos primero.")
 

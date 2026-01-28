@@ -225,19 +225,31 @@ def unir_dosificacion_resistencia(df_dos, df_res):
     # En Resistencia el grado ya viene listo
     df_res['grado_join'] = df_res['grado']
     
+    # Normalización para cruce robusto (Mayúsculas y sin espacios)
+    for col in ['grado_join', 'docilidad']:
+        if col in df_res.columns:
+            df_res[col] = df_res[col].astype(str).str.strip().str.upper()
+        if col in df_dos.columns:
+            df_dos[col] = df_dos[col].astype(str).str.strip().str.upper()
+
     # Clave: GRADO_JOIN + FD + TMN + DOCILIDAD
+    # Nota: FD y TMN son numéricos/float, los convertimos a string eliminando .0 si son enteros
+    
+    def clean_num(serie):
+        return serie.astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+
     df_res['clave_mix'] = (
         df_res['grado_join'] + "_" + 
-        df_res['fraccion_defectuosa'].astype(str) + "_" + 
-        df_res['tmn'].astype(str) + "_" + 
+        clean_num(df_res['fraccion_defectuosa']) + "_" + 
+        clean_num(df_res['tmn']) + "_" + 
         df_res['docilidad']
     )
     
     # Clave en Dosificaciones
     df_dos['clave_mix'] = (
         df_dos['grado_join'] + "_" + 
-        df_dos['fraccion_defectuosa'].astype(str) + "_" + 
-        df_dos['tmn'].astype(str) + "_" + 
+        clean_num(df_dos['fraccion_defectuosa']) + "_" + 
+        clean_num(df_dos['tmn']) + "_" + 
         df_dos['docilidad']
     )
     
@@ -293,6 +305,11 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
                     't_5mm', 't_2_5mm', 't_1_25mm', 't_0_63mm', 
                     't_0_315mm', 't_0_16mm', 't_0_08mm']
     
+    # Convertir columnas de tamices a numérico
+    for tamiz in tamices_cols:
+        if tamiz in df_filtrado.columns:
+            df_filtrado[tamiz] = pd.to_numeric(df_filtrado[tamiz], errors='coerce')
+    
     # Calcular granulometría promedio (solo tamices que existan)
     gran_prom = []
     for tamiz in tamices_cols:
@@ -300,6 +317,14 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
             gran_prom.append(df_filtrado[tamiz].mean())
         else:
             gran_prom.append(100.0)  # Default si no existe
+    
+    # Convertir columnas numéricas
+    if 'drs' in df_filtrado.columns:
+        df_filtrado['drs'] = pd.to_numeric(df_filtrado['drs'], errors='coerce')
+    if 'drsss' in df_filtrado.columns:
+        df_filtrado['drsss'] = pd.to_numeric(df_filtrado['drsss'], errors='coerce')
+    if 'absorcion' in df_filtrado.columns:
+        df_filtrado['absorcion'] = pd.to_numeric(df_filtrado['absorcion'], errors='coerce')
     
     # Calcular promedios
     resultado = {
