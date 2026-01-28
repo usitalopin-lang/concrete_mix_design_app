@@ -17,6 +17,10 @@ def generar_curva_ideal_power45(tmn: float, tamices: List[float] = None) -> Tupl
             ideales.append(max(0.0, min(100.0, pct)))
     return tamices, ideales
 
+def calcular_error_power45_normalizado(mezcla_pct: List[float], ideal_pct: List[float]) -> float:
+    min_len = min(len(mezcla_pct), len(ideal_pct))
+    if min_len == 0: return 0.0
+    mse = sum((m - i) ** 2 for m, i in zip(mezcla_pct[:min_len], ideal_pct[:min_len])) / min_len
     return round(np.sqrt(mse), 4)
 
 # --- Funciones Restauradas para Optimización (Iowa Method) ---
