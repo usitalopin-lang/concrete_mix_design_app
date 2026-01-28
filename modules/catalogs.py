@@ -62,7 +62,8 @@ def obtener_cementos():
              df = df[df['Activo'] == True] if 'Activo' in df.columns else df
              return df.to_dict('records')
         return FALLBACK_CEMENTOS
-    except Exception:
+    except Exception as e:
+        st.warning(f"⚠️ No se pudo cargar Cat_Cementos desde Sheets: {e}. Usando datos de ejemplo.")
         return FALLBACK_CEMENTOS
 
 @st.cache_data(ttl=600)
@@ -79,7 +80,8 @@ def obtener_aridos():
              df = df[df['Activo'] == True] if 'Activo' in df.columns else df
              return df.to_dict('records')
         return FALLBACK_ARIDOS
-    except Exception:
+    except Exception as e:
+        st.warning(f"⚠️ No se pudo cargar Cat_Aridos desde Sheets: {e}. Usando datos de ejemplo.")
         return FALLBACK_ARIDOS
 
 @st.cache_data(ttl=600)
@@ -96,5 +98,6 @@ def obtener_aditivos():
              df = df[df['Activo'] == True] if 'Activo' in df.columns else df
              return df.to_dict('records')
         return FALLBACK_ADITIVOS
-    except Exception:
+    except Exception as e:
+        st.warning(f"⚠️ No se pudo cargar Cat_Aditivos desde Sheets: {e}. Usando datos de ejemplo.")
         return FALLBACK_ADITIVOS
