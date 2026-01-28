@@ -241,11 +241,14 @@ def unir_dosificacion_resistencia(df_dos, df_res):
         df_dos['docilidad']
     )
     
-    # Calculamos estadísticas por Clave
+    # Asegurar que resistencia_mpa sea numérica antes de agregar
+    df_res['resistencia_mpa'] = pd.to_numeric(df_res['resistencia_mpa'], errors='coerce')
+    
+    # Calculamos estadísticas por Clave (solo si hay datos válidos)
     stats = df_res.groupby('clave_mix').agg(
         n_muestras=('resistencia_mpa', 'count'),
-        promedio_fc=('resistencia_mpa', 'mean'),
-        desviacion_std=('resistencia_mpa', 'std'),
+        promedio_fc=('resistencia_mpa', lambda x: x.mean() if x.notna().any() else np.nan),
+        desviacion_std=('resistencia_mpa', lambda x: x.std() if x.notna().any() else np.nan),
         ultimo_ensayo=('fecha_ensayo', 'max')
     ).reset_index()
     

@@ -41,6 +41,17 @@ def login_screen():
                 border-radius: 10px;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
+            /* Hacer visibles los bordes de los inputs */
+            .stTextInput > div > div > input {
+                border: 2px solid #d0d0d0 !important;
+                border-radius: 5px !important;
+                padding: 10px !important;
+                background-color: white !important;
+            }
+            .stTextInput > div > div > input:focus {
+                border-color: #1f77b4 !important;
+                box-shadow: 0 0 0 2px rgba(31, 119, 180, 0.2) !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
