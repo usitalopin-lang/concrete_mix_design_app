@@ -13,9 +13,6 @@ def cargar_catalogo_aridos():
         conn = st.connection("gsheets", type=GSheetsConnection)
         df = conn.read(worksheet=SHEET_ARIDOS, ttl=0)
         
-        # Debug: mostrar columnas originales
-        st.info(f"📋 Columnas encontradas en Google Sheets: {list(df.columns)}")
-        
         # La columna se llama simplemente 'Nombre' en este sheet
         if 'Nombre' not in df.columns:
             st.error(f"❌ No se encontró columna 'Nombre'. Columnas disponibles: {list(df.columns)}")
@@ -48,7 +45,6 @@ def cargar_catalogo_aridos():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
         
-        st.success(f"✅ Catálogo cargado: {len(df)} áridos")
         return df
         
     except Exception as e:

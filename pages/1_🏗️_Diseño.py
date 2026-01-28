@@ -16,11 +16,20 @@ st.set_page_config(page_title="Diseño Hormigón", layout="wide")
 
 inicializar_estado()
 
-# Gatekeeper de autenticación
+# Gatekeeper de autenticación - DEBE SER LO PRIMERO
 if not st.session_state.get('authenticated'):
+    # Ocultar sidebar completamente
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {
+                display: none;
+            }
+        </style>
+    """, unsafe_allow_html=True)
     st.warning("⚠️ Debes iniciar sesión en la página principal.")
     st.stop()
 
+# Solo después de autenticar, mostrar sidebar y cargar datos
 sidebar_user_info()
 
 if 'datos_completos' not in st.session_state: st.session_state.datos_completos = {}
