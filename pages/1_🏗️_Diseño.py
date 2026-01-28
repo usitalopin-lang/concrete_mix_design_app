@@ -3,8 +3,9 @@ from modules.utils_ui import inicializar_estado, sidebar_inputs, input_aridos_ui
 from config.config import DEFAULTS, TAMICES_MM, TAMICES_ASTM
 from modules.faury_joisel import disenar_mezcla_faury
 from modules.shilstone import calcular_shilstone_completo
-from modules.optimization import optimizar_agregados, generar_curva_ideal_power45, evaluar_gradacion
-from modules.charts import (
+from modules.optimization import optimizar_agregados
+from modules.power45 import generar_curva_ideal_power45, evaluar_gradacion
+from modules.graphics import (
     crear_grafico_shilstone_interactivo, mostrar_resultados_faury,
     crear_grafico_power45_interactivo, crear_grafico_tarantula_interactivo,
     crear_grafico_haystack_interactivo, crear_grafico_gradaciones_individuales, mostrar_resultados_optimizacion

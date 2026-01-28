@@ -291,6 +291,34 @@ def input_aridos_ui():
     """Genera el formulario para ingresar datos de áridos (Catalogo + Inputs)."""
     st.markdown("### 🪨 Configuración de Áridos")
     
+    # Detectar si hay áridos pre-cargados desde el Catálogo Histórico
+    aridos_precargados = st.session_state.get('aridos_precargados', [])
+    
+    if aridos_precargados:
+        st.success(f"✅ {len(aridos_precargados)} árido(s) pre-cargado(s) desde el Catálogo Histórico")
+        usar_precargados = st.checkbox("Usar áridos pre-cargados", value=True)
+        
+        if usar_precargados:
+            # Mostrar resumen
+            with st.expander("📋 Ver Áridos Pre-cargados"):
+                for i, arido in enumerate(aridos_precargados):
+                    st.markdown(f"**{i+1}. {arido['nombre']}** - DRS: {arido['DRS']:.0f} kg/m³ - Abs: {arido['absorcion']*100:.2f}%")
+            
+            # Convertir al formato esperado
+            aridos_resultado = []
+            for arido in aridos_precargados:
+                aridos_resultado.append({
+                    'nombre': arido['nombre'],
+                    'tipo': arido['tipo'],
+                    'DRS': arido['DRS'],
+                    'DRSSS': arido['DRSSS'],
+                    'absorcion': arido['absorcion'],
+                    'granulometria': arido['granulometria']
+                })
+            
+            return aridos_resultado
+    
+    # Flujo normal (manual)
     num_aridos = st.radio("Número de áridos", options=[2, 3], index=0, horizontal=True)
     aridos = []
     cols = st.columns(num_aridos)

@@ -46,6 +46,45 @@ MAP_RESISTENCIA = {
     'Edades': 'edad_dias'
 }
 
+MAP_CEMENTOS = {
+    'N°': 'n_muestra',
+    'Fecha de Muestreo': 'fecha_muestreo',
+    'Peso especifico (Densidad T/m3)': 'densidad_t_m3',
+    'Agua de const. Normal': 'agua_normal_pct',
+    'Superficie especifica (Blaine cm²/g)': 'blaine',
+    'Tiempo Fraguado Inicial': 'fraguado_inicial',
+    'Tiempo Fraguado Final': 'fraguado_final',
+    'Compresion 7D': 'compresion_7d',
+    'Compresion 28D': 'compresion_28d',
+    'Pérdida por calcinación %': 'perdida_calcinacion',
+    'Informe': 'informe'
+}
+
+MAP_ARIDOS = {
+    'N° Muestra': 'n_muestra',
+    'Fecha Muestreo': 'fecha_muestreo',
+    'Tipo de Material': 'tipo_material',
+    'Procedencia Extracción': 'procedencia',
+    'Identificación de Planta': 'planta',
+    'Densidad Real Seca-DRS (Kg/m3)': 'drs',
+    'Densidad Real SSS-DRSS (Kg/m3)': 'drsss',
+    'Absorción de Agua (%)': 'absorcion',
+    'Módulo Finura': 'modulo_finura',
+    'Material Fino Menor que 0,08 mm %': 'finos_p200',
+    # Tamices (Mapeo a nombres cortos)
+    '1 1/2" (40mm)': 't_40mm',
+    '1" (25mm)': 't_25mm',
+    '3/4" (20mm)': 't_20mm',
+    '1/2" (12.5mm)': 't_12mm',
+    '3/8" (10mm)': 't_10mm',
+    'N°4 (5mm)': 't_5mm',
+    'N°8 (2.5mm)': 't_2_5mm',
+    'N°16 (1.25mm)': 't_1_25mm',
+    'N°30 (0.630mm)': 't_0_63mm',
+    'N°50 (0.315mm)': 't_0_315mm',
+    'N°100 (0.160mm)': 't_0_16mm'
+}
+
 def obtener_conexion():
     return st.connection("gsheets", type=GSheetsConnection)
 
@@ -104,6 +143,61 @@ def cargar_resistencias():
         st.error(f"Error cargando Resistencias: {e}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=600)
+def cargar_cementos_historico():
+    """Carga y limpia la planilla de Cementos (Historial)."""
+    try:
+        conn = obtener_conexion()
+        df = conn.read(worksheet=SHEET_CEMENTOS, ttl=0)
+        
+        # 1. Renombrar
+        df.rename(columns=MAP_CEMENTOS, inplace=True)
+        
+        # 2. Limpieza numéricos
+        # Detectar columnas que mapeamos a algo numerico
+        cols_num = ['densidad_t_m3', 'compresion_7d', 'compresion_28d', 
+                   'blaine', 'agua_normal_pct', 'perdida_calcinacion']
+         # (Asegurarnos que existen antes de limpiar)
+        cols_limpiar = [c for c in cols_num if c in df.columns]
+        df = limpiar_decimales(df, cols_limpiar)
+        
+        # 3. Fechas
+        if 'fecha_muestreo' in df.columns:
+            df['fecha_muestreo'] = pd.to_datetime(df['fecha_muestreo'], errors='coerce').dt.date
+            
+        return df
+    except Exception as e:
+        st.error(f"Error cargando Cementos: {e}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=600)
+def cargar_aridos_historico():
+    """Carga y limpia la planilla de Áridos (Historial)."""
+    try:
+        conn = obtener_conexion()
+        df = conn.read(worksheet=SHEET_ARIDOS, ttl=0)
+        
+        # 1. Renombrar
+        df.rename(columns=MAP_ARIDOS, inplace=True)
+        
+        # 2. Limpieza numéricos
+        cols_num = ['drs', 'drsss', 'absorcion', 'finos_p200', 'modulo_finura']
+        # Agregar los tamices
+        tamices = [v for k,v in MAP_ARIDOS.items() if k.startswith('1') or k.startswith('3') or 'mm' in k]
+        cols_num.extend(tamices)
+        
+        cols_limpiar = [c for c in cols_num if c in df.columns]
+        df = limpiar_decimales(df, cols_limpiar)
+        
+        # 3. Fechas
+        if 'fecha_muestreo' in df.columns:
+            df['fecha_muestreo'] = pd.to_datetime(df['fecha_muestreo'], errors='coerce').dt.date
+            
+        return df
+    except Exception as e:
+        st.error(f"Error cargando Áridos: {e}")
+        return pd.DataFrame()
+
 def unir_dosificacion_resistencia(df_dos, df_res):
     """
     Une Dosificaciones con su Historial de Resistencia.
@@ -147,7 +241,71 @@ def unir_dosificacion_resistencia(df_dos, df_res):
         df_dos['docilidad']
     )
     
+    # Calculamos estadísticas por Clave
+    stats = df_res.groupby('clave_mix').agg(
+        n_muestras=('resistencia_mpa', 'count'),
+        promedio_fc=('resistencia_mpa', 'mean'),
+        desviacion_std=('resistencia_mpa', 'std'),
+        ultimo_ensayo=('fecha_ensayo', 'max')
+    ).reset_index()
+    
     # Unimos
     df_final = pd.merge(df_dos, stats, on='clave_mix', how='left')
     
     return df_final
+
+def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
+    """
+    Retorna las propiedades promedio de un árido en un período específico.
+    
+    Args:
+        tipo_material: Nombre del tipo de árido (ej: "Rodado 1", "Arena Normal")
+        fecha_desde: Fecha inicio del rango
+        fecha_hasta: Fecha fin del rango
+    
+    Returns:
+        dict con propiedades promediadas o None si no hay datos
+    """
+    df = cargar_aridos_historico()
+    
+    if df.empty:
+        return None
+    
+    # Filtrar por tipo y rango de fechas
+    mask = (df['tipo_material'].str.upper().str.contains(tipo_material.upper(), na=False)) & \
+           (df['fecha_muestreo'] >= fecha_desde) & \
+           (df['fecha_muestreo'] <= fecha_hasta)
+    
+    df_filtrado = df[mask]
+    
+    if df_filtrado.empty:
+        return None
+    
+    # Lista de tamices en orden ASTM (12 tamices estándar)
+    tamices_cols = ['t_40mm', 't_25mm', 't_20mm', 't_12mm', 't_10mm', 
+                    't_5mm', 't_2_5mm', 't_1_25mm', 't_0_63mm', 
+                    't_0_315mm', 't_0_16mm', 't_0_08mm']
+    
+    # Calcular granulometría promedio (solo tamices que existan)
+    gran_prom = []
+    for tamiz in tamices_cols:
+        if tamiz in df_filtrado.columns:
+            gran_prom.append(df_filtrado[tamiz].mean())
+        else:
+            gran_prom.append(100.0)  # Default si no existe
+    
+    # Calcular promedios
+    resultado = {
+        'nombre': tipo_material,
+        'tipo': 'Grueso' if 'CHANC' in tipo_material.upper() or 'ROD' in tipo_material.upper() else 'Fino',
+        'DRS': df_filtrado['drs'].mean() if 'drs' in df_filtrado.columns else 2650.0,
+        'DRSSS': df_filtrado['drsss'].mean() if 'drsss' in df_filtrado.columns else 2700.0,
+        'absorcion': df_filtrado['absorcion'].mean() / 100 if 'absorcion' in df_filtrado.columns else 0.01,
+        'granulometria': gran_prom,
+        'n_muestras': len(df_filtrado),
+        'fecha_ultimo': df_filtrado['fecha_muestreo'].max(),
+        'fecha_primero': df_filtrado['fecha_muestreo'].min(),
+        'muestras_detalle': df_filtrado[['n_muestra', 'fecha_muestreo', 'drs', 'absorcion']].to_dict('records') if len(df_filtrado) <= 20 else []
+    }
+    
+    return resultado

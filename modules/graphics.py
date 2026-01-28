@@ -343,3 +343,72 @@ def crear_grafico_gradaciones_individuales(tamices_nombres: List[str],
         hovermode="x unified"
     )
     return fig
+
+def mostrar_resultados_optimizacion(resultado: Dict, granulometrias: List[List[float]], tmn: float):
+    """
+    Muestra los resultados de la optimización con gráficos interactivos.
+    
+    Args:
+        resultado: Diccionario con resultados de optimización
+        granulometrias: Lista de granulometrías de áridos
+        tmn: Tamaño máximo nominal
+    """
+    import streamlit as st
+    from modules.power45 import generar_curva_ideal_power45
+    
+    st.markdown("### 🎯 Resultados de Optimización")
+    
+    # Métricas
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Error Power45", f"{resultado.get('error_power45', 0):.3f}")
+    col2.metric("Penalización Total", f"{resultado.get('penalizacion_total', 0):.3f}")
+    col3.metric("Objetivo Final", f"{resultado.get('objetivo', 0):.3f}")
+    
+    # Proporciones óptimas
+    st.markdown("#### Proporciones Óptimas")
+    props = resultado.get('proporciones', [])
+    for i, prop in enumerate(props):
+        st.write(f"**Árido {i+1}:** {prop:.2f}%")
+    
+    # Gráfico de comparación con Power45
+    curva_ideal, tamices_mm = generar_curva_ideal_power45(tmn)
+    mezcla_opt = resultado.get('mezcla_optimizada', [])
+    
+    tamices_nombres = ['2"', '1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+    
+    fig = go.Figure()
+    
+    # Curva ideal Power45
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres,
+        y=curva_ideal,
+        mode='lines',
+        name='Curva Ideal (Power 45)',
+        line=dict(color=COLOR_BUENO, width=3, dash='dash')
+    ))
+    
+    # Mezcla optimizada
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres,
+        y=mezcla_opt,
+        mode='lines+markers',
+        name='Mezcla Optimizada',
+        line=dict(color=COLOR_PRIMARIO, width=3),
+        marker=dict(size=8)
+    ))
+    
+    fig.update_layout(
+        title="Comparación con Curva Ideal Power 45",
+        xaxis=dict(title="Tamiz", type='category'),
+        yaxis=dict(title="% Que Pasa", range=[0, 105]),
+        template="plotly_white",
+        hovermode="x unified"
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Evaluación de restricciones
+    if 'evaluacion_restricciones' in resultado:
+        with st.expander("📋 Evaluación de Restricciones"):
+            eval_rest = resultado['evaluacion_restricciones']
+            st.json(eval_rest)
