@@ -254,9 +254,12 @@ with tab5:
         
         if not api_key:
             st.warning("⚠️ No se encontró API Key configurada.")
+            st.markdown("Si la tienes en `secrets.toml`, asegúrate de que la clave sea `GOOGLE_API_KEY`.")
             user_key = st.text_input("Ingresa tu Google API Key (Temporal)", type="password")
             if user_key:
                 api_key = user_key
+        else:
+            st.success("✅ Gemini API Key detectada y lista.", icon="🗝️")
         
         if api_key:
             if st.button("🧠 Analizar Diseño con IA", type="primary"):
