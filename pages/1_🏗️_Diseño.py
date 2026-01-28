@@ -200,7 +200,7 @@ with tab3:
         c2.metric("W", f"{res['W']:.1f}")
         c3.metric("Wadj", f"{res['Wadj']:.1f}")
         
-        fig = crear_grafico_shilstone_interactivo(res['CF'], res['Wadj'], res['evaluacion'])
+        fig = crear_grafico_shilstone_interactivo(res['CF'], res['Wadj'])
         st.plotly_chart(fig, use_container_width=True)
         st.markdown(f"**Zona:** {res['evaluacion']['zona']}")
     else:
