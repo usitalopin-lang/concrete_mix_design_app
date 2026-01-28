@@ -253,16 +253,40 @@ with tab5:
         api_key = gemini.obtener_api_key()
         
         if not api_key:
-            st.warning("⚠️ No se encontró API Key configurada.")
-            st.markdown("Si la tienes en `secrets.toml`, asegúrate de que la clave sea `GOOGLE_API_KEY`.")
-            user_key = st.text_input("Ingresa tu Google API Key (Temporal)", type="password")
+            st.warning("⚠️ Configura tu API Key para activar el análisis.")
+            st.markdown("Agrega `GOOGLE_API_KEY` en `secrets.toml` o ingrésala abajo:")
+            user_key = st.text_input("API Key", type="password", label_visibility="collapsed")
             if user_key:
                 api_key = user_key
-        else:
-            st.success("✅ Gemini API Key detectada y lista.", icon="🗝️")
         
         if api_key:
-            if st.button("🧠 Analizar Diseño con IA", type="primary"):
+            col_ia_1, col_ia_2 = st.columns([1, 3])
+            with col_ia_1:
+                analizar_btn = st.button("🧠 Analizar Diseño", type="primary", use_container_width=True)
+            
+            if analizar_btn:
+                with st.status("🤖 Gemini está analizando tu mezcla...", expanded=True) as status:
+                    st.write("Interpretando curvas granulométricas...")
+                    st.write("Evaluando parámetros de resistencia...")
+                    resultado = gemini.analizar_mezcla(st.session_state.datos_completos, api_key=api_key)
+                    
+                    if resultado['exito']:
+                        st.session_state.analisis_ia = resultado['analisis']
+                        status.update(label="✅ Análisis Completado", state="complete", expanded=False)
+                    else:
+                        st.error(f"Error: {resultado['error']}")
+                        status.update(label="❌ Error en el análisis", state="error", expanded=True)
+            
+            # Mostrar resultado con diseño profesional
+            if 'analisis_ia' in st.session_state and st.session_state.analisis_ia:
+                with st.container(border=True):
+                    st.markdown("#### 💡 Reporte del Consultor Experto")
+                    st.markdown(st.session_state.analisis_ia)
+                    
+                    st.markdown("---")
+                    if st.button("🗑️ Limpiar Reporte"):
+                        del st.session_state.analisis_ia
+                        st.rerun()
                 with st.spinner("Analizando mezcla con Gemini AI..."):
                     resultado = gemini.analizar_mezcla(st.session_state.datos_completos, api_key=api_key)
                     

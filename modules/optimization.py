@@ -151,6 +151,35 @@ def calcular_penalizacion_shilstone(mezcla_pct: List[float]) -> float:
     
     return penalizacion
 
+def calcular_factores_shilstone(mezcla_pct: List[float]) -> Dict[str, float]:
+    """
+    Calcula el Coarseness Factor (Cf) y Workability Factor (Wf).
+    
+    Cf = (Acumulado Retenido 3/8" / Acumulado Retenido #8) * 100
+    Wf = % Pasa #8
+    
+    Asumiendo tamices: 1.5, 1, 3/4, 1/2, 3/8, #4, #8, ...
+    Index 3/8" = 4
+    Index #8 = 6
+    """
+    if len(mezcla_pct) < 7:
+        return {'cf': 0, 'wf': 0}
+        
+    pasa_38 = mezcla_pct[4] # % Pasa 3/8"
+    pasa_8 = mezcla_pct[6]  # % Pasa #8
+    
+    acum_ret_38 = 100.0 - pasa_38
+    acum_ret_8 = 100.0 - pasa_8
+    
+    try:
+        cf = (acum_ret_38 / acum_ret_8) * 100.0 if acum_ret_8 > 0 else 0
+    except:
+        cf = 0
+        
+    wf = pasa_8
+    
+    return {'cf': round(cf, 2), 'wf': round(wf, 2)}
+
 
 def funcion_objetivo(x: np.ndarray, granulometrias: List[List[float]], 
                      ideal_power45: List[float],
@@ -301,6 +330,8 @@ def optimizar_agregados(granulometrias: List[List[float]],
             # Calcular mezcla óptima
             proporciones_optimas = list(resultado.x)
             mezcla_optima = calcular_mezcla_granulometrica(proporciones_optimas, granulometrias_ajustadas)
+            retenido_optima = calcular_retenido(mezcla_optima)
+            shilstone_factors = calcular_factores_shilstone(mezcla_optima)
             
             # Calcular errores finales
             error_p45 = calcular_error_power45(mezcla_optima, ideal[:len(mezcla_optima)], 'cuadratico')
@@ -312,6 +343,8 @@ def optimizar_agregados(granulometrias: List[List[float]],
                 'exito': True,
                 'proporciones': [round(p, 2) for p in proporciones_optimas],
                 'mezcla_granulometria': [round(m, 2) for m in mezcla_optima],
+                'mezcla_retenido': [round(r, 2) for r in retenido_optima],
+                'shilstone_factors': shilstone_factors,
                 'curva_ideal': [round(i, 2) for i in ideal],
                 'error_power45': round(error_p45, 4),
                 'error_haystack': round(error_haystack, 4),

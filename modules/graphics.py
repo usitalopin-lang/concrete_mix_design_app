@@ -543,40 +543,135 @@ def mostrar_resultados_optimizacion(resultado: Dict, granulometrias: List[List[f
     # Ajustar longitudes para que coincidan
     min_len = min(len(tamices_nombres), len(curva_ideal), len(mezcla_opt)) if mezcla_opt else min(len(tamices_nombres), len(curva_ideal))
     
-    fig = go.Figure()
+    # Tabs para diferentes gráficos
+    tab1, tab2, tab3, tab4 = st.tabs(["📉 Power 45", "🕷️ Tarántula", "🌾 Haystack", "🔷 Shilstone"])
     
-    # Curva ideal Power45
-    fig.add_trace(go.Scatter(
-        x=tamices_nombres[:min_len],
-        y=curva_ideal[:min_len],
-        mode='lines',
-        name='Curva Ideal (Power 45)',
-        line=dict(color=COLOR_BUENO, width=3, dash='dash')
-    ))
-    
-    # Mezcla optimizada
-    if mezcla_opt:
+    with tab1:
+        st.markdown("##### Comparación con Curva Ideal Power 45")
+        fig = go.Figure()
+        
+        # Curva ideal Power45
         fig.add_trace(go.Scatter(
             x=tamices_nombres[:min_len],
-            y=mezcla_opt[:min_len],
-            mode='lines+markers',
-            name='Mezcla Optimizada',
-            line=dict(color=COLOR_PRIMARIO, width=3),
-            marker=dict(size=8)
+            y=curva_ideal[:min_len],
+            mode='lines',
+            name='Curva Ideal (Power 45)',
+            line=dict(color=COLOR_BUENO, width=3, dash='dash')
         ))
+        
+        # Mezcla optimizada
+        if mezcla_opt:
+            fig.add_trace(go.Scatter(
+                x=tamices_nombres[:min_len],
+                y=mezcla_opt[:min_len],
+                mode='lines+markers',
+                name='Mezcla Optimizada',
+                line=dict(color=COLOR_PRIMARIO, width=3),
+                marker=dict(size=8)
+            ))
+        
+        fig.update_layout(
+            xaxis=dict(title="Tamiz", type='category'),
+            yaxis=dict(title="% Que Pasa", range=[0, 105]),
+            template="plotly_white",
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig, use_container_width=True)
     
-    fig.update_layout(
-        title="Comparación con Curva Ideal Power 45",
-        xaxis=dict(title="Tamiz", type='category'),
-        yaxis=dict(title="% Que Pasa", range=[0, 105]),
-        template="plotly_white",
-        hovermode="x unified"
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
+    with tab2:
+        st.markdown("##### Curva Tarántula (Retenidos Individuales)")
+        if 'mezcla_retenido' in resultado:
+            retenidos = resultado['mezcla_retenido']
+            # Asegurar longitud coincidente con tamices visuales
+            retenidos_viz = retenidos[:len(tamices_nombres)]
+            fig_tar = crear_grafico_tarantula_interactivo(tamices_nombres[:len(retenidos_viz)], retenidos_viz, tmn)
+            st.plotly_chart(fig_tar, use_container_width=True)
+        else:
+            st.warning("⚠️ Faltan datos de retenido. Por favor ejecuta la optimización nuevamente.")
+            
+    with tab3:
+        st.markdown("##### Curva Haystack")
+        if 'mezcla_retenido' in resultado:
+            retenidos = resultado['mezcla_retenido']
+            retenidos_viz = retenidos[:len(tamices_nombres)]
+            fig_hay = crear_grafico_haystack_interactivo(tamices_nombres[:len(retenidos_viz)], retenidos_viz)
+            st.plotly_chart(fig_hay, use_container_width=True)
+        else:
+            st.warning("⚠️ Faltan datos de retenido.")
+            
+    with tab4:
+        st.markdown("##### Diagrama de Factor de Tosquedad (Shilstone)")
+        if 'shilstone_factors' in resultado:
+            sf = resultado['shilstone_factors']
+            fig_shil = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'])
+            st.plotly_chart(fig_shil, use_container_width=True)
+            
+            c1, c2 = st.columns(2)
+            c1.metric("Coarseness Factor (Cf)", f"{sf['cf']:.1f}%", help="Retenido acumulado en 3/8\" / Retenido acumulado en #8")
+            c2.metric("Workability Factor (Wf)", f"{sf['wf']:.1f}%", help="% Pasante del tamiz #8")
+        else:
+            st.warning("⚠️ Faltan factores de Shilstone. Re-optimiza para calcularlos.")
     
     # Evaluación de restricciones
     if 'evaluacion_restricciones' in resultado:
-        with st.expander("📋 Evaluación de Restricciones"):
+        with st.expander("📋 Evaluación Detallada de Restricciones"):
             eval_rest = resultado['evaluacion_restricciones']
             st.json(eval_rest)
+
+def crear_grafico_shilstone_interactivo(cf: float, wf: float) -> go.Figure:
+    """
+    Crea el Diagrama de Shilstone (Workability vs Coarseness).
+    """
+    fig = go.Figure()
+    
+    # Definir Zonas Aproximadas (Polígonos)
+    # Zona II (Óptima) - Banda Diagonal Típica
+    # Puntos aproximados de la banda "Trend Bar"
+    x_zone2 = [45, 75, 75, 45, 45]
+    y_zone2 = [39, 29, 34, 44, 39] # Ajustado para banda visual
+    
+    fig.add_trace(go.Scatter(
+        x=x_zone2, y=y_zone2,
+        fill="toself",
+        fillcolor="rgba(0, 255, 0, 0.1)",
+        line=dict(color="rgba(0, 128, 0, 0.5)", dash="dash"),
+        name="Zona II (Óptima)",
+        hoverinfo="skip"
+    ))
+    
+    # Punto de la Mezcla
+    color_punto = 'green'
+    # Validación simple: Si está dentro del box (simplificado)
+    # Check if inside rectangle 45-75 Cf and approx band Wf
+    if not (20 <= cf <= 90 and 10 <= wf <= 60):
+        color_punto = 'red'
+    
+    fig.add_trace(go.Scatter(
+        x=[cf],
+        y=[wf],
+        mode='markers+text',
+        name='Tu Mezcla',
+        text=["ESTÁS AQUÍ"],
+        textposition="top center",
+        marker=dict(size=15, color=color_punto, symbol='star', line=dict(width=2, color='black')),
+        hovertemplate="Cf: %{x:.1f}%<br>Wf: %{y:.1f}%<extra></extra>"
+    ))
+    
+    fig.update_layout(
+        title="Diagrama de Factor de Tosquedad (Shilstone)",
+        xaxis=dict(title="Coarseness Factor (%)", range=[20, 90], zeroline=False),
+        yaxis=dict(title="Workability Factor (%)", range=[10, 60], zeroline=False),
+        template="plotly_white",
+        height=500,
+        shapes=[
+            # Línea de tendencia (ejemplo)
+            dict(type="line", x0=45, y0=41.5, x1=75, y1=31.5, line=dict(color="gray", width=1, dash="dot"))
+        ]
+    )
+    
+    # Anotaciones
+    fig.add_annotation(x=30, y=50, text="ZONA I<br>(Gap-Graded)", showarrow=False, font=dict(color="orange"))
+    fig.add_annotation(x=80, y=20, text="ZONA III<br>(Arenosa)", showarrow=False, font=dict(color="orange"))
+    fig.add_annotation(x=60, y=36, text="ZONA II<br>(Trabajable)", showarrow=False, font=dict(color="green"))
+    
+    return fig
