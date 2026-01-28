@@ -4,6 +4,7 @@ from config.config import DEFAULTS, TAMICES_MM, TAMICES_ASTM
 from modules.faury_joisel import disenar_mezcla_faury
 from modules.shilstone import calcular_shilstone_completo
 from modules.optimization import optimizar_agregados
+from modules import gemini_integration as gemini
 from modules.power45 import generar_curva_ideal_power45, evaluar_gradacion
 from modules.graphics import (
     crear_grafico_shilstone_interactivo, mostrar_resultados_faury,
@@ -227,7 +228,14 @@ with tab4:
                         st.stop()
                     grans.append(gran)
                 
-                res_opt = optimizar_agregados(grans, params['tmn'], len(grans), p_hay, p_tar, p_shil)
+                res_opt = optimizar_agregados(
+                    granulometrias=grans,
+                    tmn=params['tmn'],
+                    num_agregados=len(grans),
+                    peso_haystack=p_hay,
+                    peso_tarantula=p_tar,
+                    peso_shilstone=p_shil
+                )
                 st.session_state.resultados_optimizacion = res_opt
                 mostrar_resultados_optimizacion(res_opt, grans, params['tmn'])
             except Exception as e:
@@ -239,11 +247,43 @@ with tab4:
 
 with tab5:
     if st.session_state.datos_completos:
-        st.markdown("### 🤖 Consultor IA")
-        st.info("💡 **Próximamente:** Análisis inteligente de tu diseño con Gemini AI")
+        st.markdown("### 🤖 Consultor IA (Gemini)")
         
-        # Placeholder para futuro consultor IA
-        with st.expander("📋 Vista Previa de Datos"):
+        # Verificar API Key
+        api_key = gemini.obtener_api_key()
+        
+        if not api_key:
+            st.warning("⚠️ No se encontró API Key configurada.")
+            user_key = st.text_input("Ingresa tu Google API Key (Temporal)", type="password")
+            if user_key:
+                api_key = user_key
+        
+        if api_key:
+            if st.button("🧠 Analizar Diseño con IA", type="primary"):
+                with st.spinner("Analizando mezcla con Gemini AI..."):
+                    resultado = gemini.analizar_mezcla(st.session_state.datos_completos, api_key=api_key)
+                    
+                    if resultado['exito']:
+                        st.session_state.analisis_ia = resultado['analisis']
+                    else:
+                        st.error(f"Error en análisis: {resultado['error']}")
+            
+            # Mostrar resultado si existe en sesión
+            if 'analisis_ia' in st.session_state and st.session_state.analisis_ia:
+                st.markdown("#### 💡 Análisis y Recomendaciones")
+                st.markdown(st.session_state.analisis_ia)
+                
+                # Botón de limpiar análisis
+                if st.button("Limpiar Análisis"):
+                    del st.session_state.analisis_ia
+                    st.rerun()
+        else:
+            st.info("ℹ️ Configura tu API Key para activar el análisis inteligente.")
+
+        st.markdown("---")
+        
+        # Placeholder para vista datos
+        with st.expander("📋 Vista Previa de Datos Técnicos (JSON)"):
             st.json(st.session_state.datos_completos)
         
         st.markdown("---")

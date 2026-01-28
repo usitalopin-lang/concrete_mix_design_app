@@ -71,6 +71,74 @@ def mostrar_resultados_faury(resultados: Dict):
             'Límite Sup': max_vals
         })
         st.dataframe(df_gran, use_container_width=True, hide_index=True)
+        
+        # --- Gráfico Logarítmico de Granulometría ---
+        import plotly.graph_objects as go
+        
+        # Mapeo de tamices a apertura mm para eje X logarítmico
+        tamiz_mm_map = {
+            '1.5"': 37.5, '1"': 25.0, '3/4"': 19.0, '1/2"': 12.5, '3/8"': 9.5,
+            '#4': 4.75, '#8': 2.36, '#16': 1.18, '#30': 0.60, '#50': 0.30, 
+            '#100': 0.15, '#200': 0.075
+        }
+        
+        # Obtener valores X (aperturas) filtrando los que existen en 'tamices'
+        x_vals = []
+        for t in tamices:
+            x_vals.append(tamiz_mm_map.get(t, 0.1)) # Fallback 0.1 si no encuentra
+            
+        fig_gran = go.Figure()
+        
+        # Banda Superior
+        if any(max_vals):
+            # Filtrar Nones para graficar
+            x_sup = [x for x, y in zip(x_vals, max_vals) if y is not None]
+            y_sup = [y for y in max_vals if y is not None]
+            
+            fig_gran.add_trace(go.Scatter(
+                x=x_sup, y=y_sup,
+                mode='lines',
+                name='Límite Superior',
+                line=dict(color='red', width=2, dash='dash')
+            ))
+            
+        # Banda Inferior
+        if any(min_vals):
+            x_inf = [x for x, y in zip(x_vals, min_vals) if y is not None]
+            y_inf = [y for y in min_vals if y is not None]
+            
+            fig_gran.add_trace(go.Scatter(
+                x=x_inf, y=y_inf,
+                mode='lines',
+                name='Límite Inferior',
+                line=dict(color='red', width=2, dash='dash')
+            ))
+
+        # Curva Mezcla
+        y_mezcla = gran_data[:len(tamices)]
+        fig_gran.add_trace(go.Scatter(
+            x=x_vals, y=y_mezcla,
+            mode='lines+markers',
+            name='Mezcla Diseñada',
+            line=dict(color='#1f77b4', width=3),
+            marker=dict(size=6)
+        ))
+        
+        fig_gran.update_layout(
+            title="Curva Granulométrica (Escala Logarítmica)",
+            xaxis=dict(
+                title="Apertura (mm)", 
+                type="log", 
+                autorange="reversed", # Mayor a menor apertura
+                tickvals=[37.5, 19.0, 9.5, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15, 0.075],
+                ticktext=['1.5"', '3/4"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+            ),
+            yaxis=dict(title="% Pasante Acumulado", range=[0, 105]),
+            template="plotly_white",
+            hovermode="x unified",
+            height=500
+        )
+        st.plotly_chart(fig_gran, use_container_width=True)
 
 def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict) -> go.Figure:
     """
