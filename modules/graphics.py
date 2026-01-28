@@ -28,11 +28,33 @@ def mostrar_resultados_faury(resultados: Dict):
     st.markdown("### 📊 Resultados del Diseño Faury-Joisel")
     
     # Métricas principales
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Cemento", f"{resultados['cemento']['cantidad']:.1f} kg/m³")
-    col2.metric("Agua", f"{resultados['agua_cemento']['agua_amasado']:.1f} L/m³")
-    col3.metric("A/C", f"{resultados['agua_cemento']['razon']:.3f}")
-    col4.metric("Aire", f"{resultados['aire']['volumen']:.1f} L/m³")
+    # Calcular Pasta (Agua + Cemento + Aire opcionalmente, pero purista es Cemento+Agua)
+    # Volumen Cemento = Peso / Densidad
+    densidad_cemento = 3.0 # Default si no viene
+    if 'cemento' in resultados and 'densidad' in resultados['cemento']:
+         densidad_cemento = resultados['cemento']['densidad']
+    
+    vol_cemento = resultados.get('cemento', {}).get('cantidad', 0) / densidad_cemento
+    vol_agua = resultados.get('agua_cemento', {}).get('agua_total', 0)
+    vol_aire = resultados.get('aire', {}).get('volumen', 0)
+    
+    # Pasta Cemento + Agua
+    vol_pasta = vol_cemento + vol_agua
+    pct_pasta = (vol_pasta / 1000.0) * 100
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.metric("Cemento", f"{resultados.get('cemento', {}).get('cantidad', 0)} kg/m³")
+    with col2:
+        st.metric("Agua", f"{resultados.get('agua_cemento', {}).get('agua_total', 0)} L/m³")
+    with col3:
+        st.metric("A/C", f"{resultados.get('agua_cemento', {}).get('razon', 0)}")
+    with col4:
+        st.metric("Aire", f"{resultados.get('aire', {}).get('volumen', 0)} L/m³")
+    with col5:
+        st.metric("Pasta", f"{vol_pasta:.0f} L/m³", help=f"Volumen Pasta (Cemento+Agua): {pct_pasta:.1f}% del total")
+
     
     # Tabla de cantidades
     st.markdown("#### Cantidades de Materiales")

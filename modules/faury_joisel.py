@@ -437,57 +437,68 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
 
     # 1. Resistencia media
     fd_mpa, fd_kgcm2 = calcular_resistencia_media(resistencia_fc, desviacion_std, fraccion_def)
+    MAX_AC_DURABILIDAD = 0.55 # Valor seguro por defecto
+    max_ac_durabilidad = MAX_AC_DURABILIDAD
+    if condicion_exposicion == "Hormigón a la vista":
+        max_ac_durabilidad = 0.50
+    elif condicion_exposicion == "Sometido a congelación":
+        max_ac_durabilidad = 0.45
+    elif condicion_exposicion == "En contacto con sulfatos":
+        max_ac_durabilidad = 0.45 # Mismo que congelación para simplificar o según norma
     
-    # --- LOGICA MAGALLANES / USUARIO ---
+    # --- LÓGICA DE CÁLCULO MAGALLANES (FAURY-JOISEL CORREGIDO) ---
+    # Orden: 1. Cemento (por resistencia) -> 2. A/C -> 3. Agua
+    
+    # 1. Cantidad de Cemento (Base)
+    # C = Fd (kg/cm2) * 0.95 (Factor Eficiencia Magallanes)
+    factor_eficiencia = 0.95
+    cemento_calculado = calcular_cemento(fd_kgcm2, factor_eficiencia)
     
     # 2. Razón A/C
     if manual_ac is not None:
         ac_ratio = manual_ac
     else:
         ac_ratio_resistencia = obtener_razon_ac(fd_kgcm2)
+        # Aplicar límites de durabilidad
         ac_ratio = min(ac_ratio_resistencia, max_ac_durabilidad)
 
-    # 3. Cantidad de Cemento
-    # Si usamos lógica directa (Magallanes), calculamos cemento primero desde Fd.
-    # Fórmula aproximada común: C = Fd / K (K~0.5) o C = Fd * 0.95 aprox en código anterior
-    # Mantendremos la lógica de calcular C basado en Fd si hay manual A/C? 
-    # El usuario dijo: "Conocemos la cantidad de cemento". 
-    # El sistema DEBE calcular el cemento inicial de alguna forma.
-    # Usaremos la fórmula de eficiencia que ya existía: C = fd * 0.95
-    cemento = calcular_cemento(fd_kgcm2, factor_eficiencia=0.95)
+    # 3. Agua de Amasado
+    # A = C * A/C
+    cemento = cemento_calculado
+    agua_amasado = cemento * ac_ratio
     
-    # 4. Agua de Amasado
-    # Si el usuario define A/C -> Agua = Cemento * A/C
-    # Si NO define A/C (Modo ACI) -> Agua = ACI Tables -> Cemento = Agua / A/C
+    # Ajuste: Verificar si el agua es muy baja para la trabajabilidad requerida (Check Slump)
+    # Si el agua calculada es insuficiente para el slump, Faury puro diría "sube cemento y agua manteniendo A/C"
+    # O "usa aditivos". Por ahora, mantenemos la lógica estricta de Magallanes.
     
-    modo_calculo_agua = "ACI"
+    # Reducción de agua por aditivos (si aplica)
+    # En este método, si usamos aditivos reductores, bajamos el agua calculada?
+    # O asumimos que el A/C ya considera eso?
+    # Usualmente: Agua Real = Agua Teorica * (1 - Reduccion)
+    # Y luego recalculamos Cemento Real = Agua Real / AC ? No, eso rompe el Cemento Base.
+    # SI bajamos agua por aditivo y mantenemos Cemento -> Baja A/C -> Sube resistencia (Mejor)
+    # O Mantenemos A/C -> Baja Cemento (Ahorro).
     
-    if manual_ac is not None:
-        modo_calculo_agua = "RELACION_AC"
-        agua_amasado = cemento * ac_ratio
-    else:
-        # Modo ACI (Estándar anterior)
-        from config.config import CONSISTENCIAS
-        rango_asentamiento = CONSISTENCIAS.get(consistencia, '6-9 cm')
-        agua_base = estimar_agua_amasado(rango_asentamiento, tmn)
-        
-        # Reducción por aditivos solo aplica si estimamos desde tabla ACI
-        # Si calculamos directo C*A/C, asumimos que esa A/C ya considera la química
+    # Lógica conservadora: Mantener Cemento calculado por resistencia.
+    # Aplicar aditivo para reducir agua -> Baja A/C efectiva -> Mayor seguridad.
+    
+    if aditivos_config:
         reduccion_agua_pct = 0.0
-        if aditivos_config:
-            for ad in aditivos_config:
-                nombre_ad = ad['nombre'].lower()
-                if "superplastificante" in nombre_ad or "hiperplastificante" in nombre_ad:
-                    reduccion_agua_pct += 0.12 
-                elif "plastificante" in nombre_ad:
-                    reduccion_agua_pct += 0.05
-        reduccion_agua_pct = min(reduccion_agua_pct, 0.30)
-        agua_amasado = agua_base * (1.0 - reduccion_agua_pct)
+        for ad in aditivos_config:
+            nombre_ad = ad['nombre'].lower()
+            if "superplastificante" in nombre_ad or "hiperplastificante" in nombre_ad:
+                reduccion_agua_pct += 0.20
+            elif "plastificante" in nombre_ad:
+                reduccion_agua_pct += 0.08
         
-        # Recalcular cemento basado en esta agua
-        cemento_por_agua = calcular_cemento_por_agua(agua_amasado, ac_ratio, min_cemento_durabilidad)
-        # Usamos el mayor para seguridad
-        cemento = max(cemento, cemento_por_agua)
+        # Aplicar reducción al agua
+        agua_amasado = agua_amasado * (1.0 - reduccion_agua_pct)
+        
+        # Recalcular A/C efectivo (será menor, es decir mejor)
+        ac_ratio_final = agua_amasado / cemento
+        # Pero reportamos el diseño con este nuevo equilibrio.
+        ac_ratio = ac_ratio_final
+
 
     # 5. Aire ocluido (volumen)
     if manual_aire_litros is not None:
