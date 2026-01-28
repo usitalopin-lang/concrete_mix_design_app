@@ -1,6 +1,6 @@
 import streamlit as st
-from config.config import DEFAULTS, TAMICES_MM, TAMICES_ASTM
-from modules.data_loader import cargar_catalogo_aridos, obtener_arido_por_nombre
+from config.config import TAMICES_MM, TAMICES_ASTM
+from modules.utils_ui import inicializar_estado, sidebar_inputs, sidebar_user_info, input_aridos_ui
 from modules.faury_joisel import disenar_mezcla_faury
 from modules.shilstone import calcular_shilstone_completo
 from modules.graphics import (
@@ -10,15 +10,16 @@ from modules.graphics import (
 from modules.power45 import generar_curva_ideal_power45
 from modules.optimization import optimizar_agregados
 from modules import gemini_integration as gemini
-from modules.utils_ui import inicializar_estado, sidebar_user_info
+from modules.pdf_generator import generar_pdf_informe
+import json
+from datetime import datetime
 
 st.set_page_config(page_title="Diseño Hormigón", layout="wide")
 
 inicializar_estado()
 
-# Gatekeeper de autenticación - DEBE SER LO PRIMERO
+# Gatekeeper de autenticación
 if not st.session_state.get('authenticated'):
-    # Ocultar sidebar completamente
     st.markdown("""
         <style>
             [data-testid="stSidebar"] {
@@ -29,71 +30,165 @@ if not st.session_state.get('authenticated'):
     st.warning("⚠️ Debes iniciar sesión en la página principal.")
     st.stop()
 
-# Solo después de autenticar, mostrar sidebar y cargar datos
+# Sidebar con todos los inputs
+inputs = sidebar_inputs()
 sidebar_user_info()
 
-if 'datos_completos' not in st.session_state: st.session_state.datos_completos = {}
-if 'analisis_ia' not in st.session_state: st.session_state.analisis_ia = None
+st.title("🏗️ Diseño de Mezclas de Concreto")
 
-st.title("🏗️ Diseño de Mezclas - Conectado a BD")
-df_aridos = cargar_catalogo_aridos()
-
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Entrada Datos", "📊 Resultados", "📈 Gráficos", "✨ Optimización (Iowa)", "🤖 IA"])
+# Tabs principales
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📝 Entrada Datos", 
+    "📊 Resultados", 
+    "📈 Gráficos", 
+    "✨ Optimización (Iowa)", 
+    "🤖 IA"
+])
 
 with tab1:
-    st.subheader("Selección de Materiales (Google Sheets)")
-    aridos_seleccionados = []
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### Árido 1 (Grueso)")
-        nom_a1 = st.selectbox("Catálogo Grueso", df_aridos['Nombre del Árido'].unique(), key="sel_a1")
-        if nom_a1: aridos_seleccionados.append(obtener_arido_por_nombre(nom_a1, df_aridos))
-    with col2:
-        st.markdown("#### Árido 2 (Fino)")
-        opciones = df_aridos['Nombre del Árido'].unique()
-        nom_a2 = st.selectbox("Catálogo Fino", opciones, key="sel_a2", index=1 if len(opciones)>1 else 0)
-        if nom_a2: aridos_seleccionados.append(obtener_arido_por_nombre(nom_a2, df_aridos))
-
+    st.markdown("### 🪨 Configuración de Áridos")
+    aridos = input_aridos_ui()
+    
     st.markdown("---")
-    if st.button("🔄 Calcular Diseño Manual", type="primary"):
-        res_faury = disenar_mezcla_faury(
-            DEFAULTS['fc'], 40, 0.1, "Plástica", 19.0, 3100,
-            aridos_seleccionados, 2.0, "Sin riesgo", []
+    
+    if st.button("🔄 Calcular Diseño", type="primary", use_container_width=True):
+        if len(aridos) < 2:
+            st.error("❌ Debes configurar al menos 2 áridos")
+        else:
+            with st.spinner("Calculando diseño Faury-Joisel..."):
+                # Diseño Faury-Joisel
+                resultado_faury = disenar_mezcla_faury(
+                    fc_objetivo=inputs['resistencia_fc'],
+                    desviacion_std=inputs['desviacion_std'],
+                    fraccion_defectuosa=inputs['fraccion_def'],
+                    consistencia=inputs['consistencia'],
+                    tmn=inputs['tmn'],
+                    densidad_cemento=inputs['densidad_cemento'],
+                    aridos=aridos,
+                    aire_adicional=inputs['aire_porcentaje'],
+                    condicion_exposicion=inputs['condicion_exposicion'],
+                    aditivos=inputs['aditivos_config']
+                )
+                
+                # Análisis Shilstone
+                resultado_shilstone = calcular_shilstone_completo(
+                    resultado_faury['granulometria_mezcla'],
+                    TAMICES_MM,
+                    resultado_faury['cemento']['cantidad']
+                )
+                
+                # Guardar en session_state
+                st.session_state.datos_completos = {
+                    **inputs,
+                    'aridos': aridos,
+                    'faury_joisel': resultado_faury,
+                    'shilstone': resultado_shilstone
+                }
+                
+                st.success("✅ Diseño calculado exitosamente!")
+                st.balloons()
+
+with tab2:
+    if not st.session_state.datos_completos:
+        st.info("👈 Configura los parámetros en la pestaña 'Entrada Datos' y presiona 'Calcular Diseño'")
+    else:
+        datos = st.session_state.datos_completos
+        faury = datos['faury_joisel']
+        shil = datos['shilstone']
+        
+        st.markdown("## 📋 Resumen del Diseño")
+        
+        # KPIs principales
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Cemento", f"{faury['cemento']['cantidad']:.1f} kg/m³")
+        col2.metric("Agua Total", f"{faury['agua_cemento']['agua_total']:.1f} L/m³")
+        col3.metric("Razón A/C", f"{faury['agua_cemento']['razon']:.3f}")
+        col4.metric("Shilstone CF", f"{shil['CF']:.1f}")
+        
+        st.markdown("---")
+        
+        # Dosificación
+        st.markdown("### 🧮 Dosificación por m³")
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            st.markdown("**Materiales Cementantes**")
+            st.write(f"- Cemento: **{faury['cemento']['cantidad']:.2f} kg**")
+            st.write(f"- Agua efectiva: **{faury['agua_cemento']['agua_efectiva']:.2f} L**")
+            st.write(f"- Agua total: **{faury['agua_cemento']['agua_total']:.2f} L**")
+            
+        with col_b:
+            st.markdown("**Agregados**")
+            for arido in faury['aridos']:
+                st.write(f"- {arido['nombre']}: **{arido['cantidad_seca']:.2f} kg**")
+        
+        # Botón PDF
+        st.markdown("---")
+        if st.button("📄 Generar Informe PDF"):
+            pdf_bytes = generar_pdf_informe(datos)
+            st.download_button(
+                "⬇️ Descargar PDF",
+                pdf_bytes,
+                file_name=f"Informe_Diseño_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf"
+            )
+        
+        # Botón JSON
+        json_data = json.dumps(datos, default=str, indent=2)
+        st.download_button(
+            "💾 Guardar JSON Local",
+            json_data,
+            file_name=f"{inputs['nombre_archivo_local']}.json",
+            mime="application/json"
         )
-        res_shil = calcular_shilstone_completo(
-            res_faury['granulometria_mezcla'], TAMICES_MM, res_faury['cemento']['cantidad']
-        )
-        st.session_state.datos_completos = {'faury': res_faury, 'shilstone': res_shil, 'aridos': aridos_seleccionados}
-        st.success("Cálculo Manual OK")
 
 with tab3:
-    if 'shilstone' in st.session_state.datos_completos:
-        st.markdown("### 📊 Análisis de Mezcla Manual")
+    if not st.session_state.datos_completos:
+        st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
+    else:
+        datos = st.session_state.datos_completos
+        shil = datos['shilstone']
+        faury = datos['faury_joisel']
+        
+        st.markdown("### 📊 Análisis Granulométrico")
+        
         col_g1, col_g2 = st.columns(2)
+        
         with col_g1:
-            res = st.session_state.datos_completos['shilstone']
-            st.plotly_chart(crear_grafico_shilstone_interactivo(res['CF'], res['Wadj']), use_container_width=True)
+            st.markdown("#### Diagrama Shilstone")
+            fig_shil = crear_grafico_shilstone_interactivo(shil['CF'], shil['Wadj'])
+            st.plotly_chart(fig_shil, use_container_width=True)
+        
         with col_g2:
-            mezcla = st.session_state.datos_completos['faury']['granulometria_mezcla']
-            _, ideal = generar_curva_ideal_power45(19.0, TAMICES_MM)
-            st.plotly_chart(crear_grafico_power45_interactivo(TAMICES_ASTM, TAMICES_MM, mezcla, ideal), use_container_width=True)
+            st.markdown("#### Curva Power 0.45")
+            _, ideal = generar_curva_ideal_power45(datos['tmn'], TAMICES_MM)
+            fig_p45 = crear_grafico_power45_interactivo(
+                TAMICES_ASTM, TAMICES_MM, 
+                faury['granulometria_mezcla'], ideal
+            )
+            st.plotly_chart(fig_p45, use_container_width=True)
 
 with tab4:
     st.markdown("### 🧬 Optimización Matemática (Iowa Method)")
-    if 'aridos' in st.session_state.datos_completos and st.session_state.datos_completos['aridos']:
+    
+    if not st.session_state.datos_completos or 'aridos' not in st.session_state.datos_completos:
+        st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
+    else:
         aridos = st.session_state.datos_completos['aridos']
         grans = [a['granulometria'] for a in aridos]
         
         col_opt1, col_opt2 = st.columns([1, 2])
+        
         with col_opt1:
             st.info(f"Optimizando {len(aridos)} áridos...")
             if st.button("🚀 Ejecutar Optimización Multi-objetivo"):
-                res_opt = optimizar_agregados(grans, tmn=19.0)
-                if res_opt['exito']:
-                    st.session_state.res_opt = res_opt
-                    st.success(f"Optimización Exitosa! Error Total: {res_opt['error_total']}")
-                else:
-                    st.error("Falló la optimización")
+                with st.spinner("Optimizando..."):
+                    res_opt = optimizar_agregados(grans, tmn=st.session_state.datos_completos['tmn'])
+                    if res_opt['exito']:
+                        st.session_state.res_opt = res_opt
+                        st.success(f"✅ Optimización Exitosa! Error Total: {res_opt['error_total']:.4f}")
+                    else:
+                        st.error("❌ Falló la optimización")
         
         if 'res_opt' in st.session_state:
             res = st.session_state.res_opt
@@ -103,23 +198,42 @@ with tab4:
             tab_p45, tab_tar, tab_hay, tab_shil = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone"])
             
             with tab_p45:
-                st.plotly_chart(crear_grafico_power45_interactivo(TAMICES_ASTM, TAMICES_MM, res['mezcla_granulometria'], res['curva_ideal']), use_container_width=True)
+                fig = crear_grafico_power45_interactivo(
+                    TAMICES_ASTM, TAMICES_MM, 
+                    res['mezcla_granulometria'], res['curva_ideal']
+                )
+                st.plotly_chart(fig, use_container_width=True)
             
             with tab_tar:
-                st.plotly_chart(crear_grafico_tarantula_interactivo(TAMICES_ASTM, res['mezcla_retenido']), use_container_width=True)
+                fig = crear_grafico_tarantula_interactivo(TAMICES_ASTM, res['mezcla_retenido'])
+                st.plotly_chart(fig, use_container_width=True)
             
             with tab_hay:
-                st.plotly_chart(crear_grafico_haystack_interactivo(TAMICES_ASTM, res['mezcla_retenido']), use_container_width=True)
-                
+                fig = crear_grafico_haystack_interactivo(TAMICES_ASTM, res['mezcla_retenido'])
+                st.plotly_chart(fig, use_container_width=True)
+            
             with tab_shil:
                 sf = res['shilstone_factors']
-                st.plotly_chart(crear_grafico_shilstone_interactivo(sf['cf'], sf['wf']), use_container_width=True)
+                fig = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'])
+                st.plotly_chart(fig, use_container_width=True)
 
-with tab5: # IA
-    if st.session_state.datos_completos:
-        # ... (rest of IA tab)
-        api_key = st.text_input("API Key Gemini", type="password")
-        if api_key and st.button("Analizar con IA"):
-            res = gemini.analizar_mezcla(st.session_state.datos_completos, api_key=api_key)
-            st.session_state.analisis_ia = res['analisis'] if res['exito'] else res['error']
-        if st.session_state.analisis_ia: st.markdown(st.session_state.analisis_ia)
+with tab5:
+    st.markdown("### 🤖 Análisis con IA (Gemini)")
+    
+    if not st.session_state.datos_completos:
+        st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
+    else:
+        api_key = st.text_input("API Key Gemini", type="password", help="Ingresa tu API key de Google Gemini")
+        
+        if api_key and st.button("✨ Analizar con IA"):
+            with st.spinner("Analizando con Gemini..."):
+                resultado = gemini.analizar_mezcla(st.session_state.datos_completos, api_key=api_key)
+                if resultado['exito']:
+                    st.session_state.analisis_ia = resultado['analisis']
+                    st.success("✅ Análisis completado")
+                else:
+                    st.error(f"❌ Error: {resultado['error']}")
+        
+        if st.session_state.analisis_ia:
+            st.markdown("#### 📝 Análisis del Diseño")
+            st.markdown(st.session_state.analisis_ia)
