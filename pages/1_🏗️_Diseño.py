@@ -45,6 +45,48 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 with tab1:
     st.markdown("### Configuración de Materiales")
+    
+    # --- NUEVO: Configuración Avanzada / Magallanes ---
+    with st.expander("🛠️ Configuración Avanzada (Magallanes / Experto)", expanded=False):
+        st.session_state.modo_avanzado_magallanes = st.checkbox("ACTIVAR Configuración Manual (A/C y Aire)", 
+                                                               value=st.session_state.get('modo_avanzado_magallanes', False))
+        
+        # Calcular recomendados para mostrar como referencia
+        # 1. A/C Recomendada
+        from modules.faury_joisel import calcular_resistencia_media, obtener_razon_ac, obtener_aire_ocluido
+        
+        # Necesitamos Fd para saber la A/C teórica
+        fd, fd_kg = calcular_resistencia_media(params['resistencia_fc'], params['desviacion_std'], params['fraccion_def'])
+        ac_ref = obtener_razon_ac(fd_kg)
+        
+        # 2. Aire Recomendado
+        aire_ref_lt = obtener_aire_ocluido(params['tmn'], params['aire_porcentaje'])
+        
+        if st.session_state.modo_avanzado_magallanes:
+            st.info(f"💡 El Agua se calculará como: Cemento * A/C Manual.")
+            
+            col_man1, col_man2 = st.columns(2)
+            with col_man1:
+                st.session_state.input_manual_ac = st.number_input(
+                    "Razón A/C Objetivo", 
+                    min_value=0.2, max_value=1.0, 
+                    value=st.session_state.get('input_manual_ac', 0.45), 
+                    step=0.01,
+                    help=f"Recomendado por Resistencia: {ac_ref:.2f}"
+                )
+                st.caption(f"ℹ️ Sugerido (Tablas): **{ac_ref:.2f}**")
+                
+            with col_man2:
+                st.session_state.input_manual_aire = st.number_input(
+                    "Aire Ocluido (Litros)", 
+                    min_value=0.0, max_value=100.0, 
+                    value=st.session_state.get('input_manual_aire', 20.0), 
+                    step=1.0,
+                    help=f"Recomendado por TMN: {aire_ref_lt:.1f} L"
+                )
+                st.caption(f"ℹ️ Sugerido (TMN): **{aire_ref_lt:.1f} L**")
+    # ----------------------------------------------------
+
     aridos = input_aridos_ui()
     st.session_state.aridos_config = aridos
     
@@ -95,12 +137,29 @@ with tab1:
         with st.spinner("Calculando diseño..."):
             try:
                 # 1. Faury
+                override_ac = None
+                override_aire = None
+                
+                # --- NUEVO: Modo Magallanes / Manual ---
+                # Si el usuario quiere forzar A/C o Aire
+                # Podríamos poner esto en sidebar o arriba.
+                # Lo ponemos en el objeto 'params' si decidimos agregarlo ahí,
+                # o lo leemos aqui de inputs nuevos.
+                # Para limpieza, usamos variable de session_state o leemos inputs si existen.
+                # Aqui simplificamos leyendo de session_state si está configurado
+                
+                if st.session_state.get('modo_avanzado_magallanes'):
+                    override_ac = st.session_state.get('input_manual_ac')
+                    override_aire = st.session_state.get('input_manual_aire')
+                
                 res_faury = disenar_mezcla_faury(
                     params['resistencia_fc'], params['desviacion_std'], params['fraccion_def'],
                     params['consistencia'], params['tmn'], params['densidad_cemento'],
                     aridos, params['aire_porcentaje'], params['condicion_exposicion'],
                     params['aditivos_config'],
-                    proporciones_personalizadas=proporciones_custom # Pasamos el override
+                    proporciones_personalizadas=proporciones_custom,
+                    manual_ac=override_ac,
+                    manual_aire_litros=override_aire
                 )
                 st.session_state.resultados_faury = res_faury
                 

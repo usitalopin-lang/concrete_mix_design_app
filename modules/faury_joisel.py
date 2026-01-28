@@ -419,25 +419,16 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
                          aridos: List[Dict], aire_porcentaje: float = 0.0,
                          condicion_exposicion: str = "Sin riesgo",
                          aditivos_config: List[Dict] = None,
-                         proporciones_personalizadas: List[float] = None) -> Dict:
+                         proporciones_personalizadas: List[float] = None,
+                         manual_ac: float = None,
+                         manual_aire_litros: float = None) -> Dict:
     """
     Función principal que ejecuta todo el diseño de mezcla por Faury-Joisel.
     
     Args:
-        resistencia_fc: Resistencia especificada en MPa
-        desviacion_std: Desviación estándar en MPa
-        fraccion_def: Fracción defectuosa
-        consistencia: Tipo de consistencia
-        tmn: Tamaño máximo nominal en mm
-        densidad_cemento: Densidad del cemento en kg/m³
-        aridos: Lista de diccionarios con datos de cada árido
-        aire_porcentaje: Porcentaje de aire incorporado adicional
-        condicion_exposicion: Condición de durabilidad
-        aditivos_config: Lista de aditivos
-        proporciones_personalizadas: Lista [grueso%, fino%] o [g1, g2, fino] (Suma ~100) opcional
-    
-    Returns:
-        Diccionario con todos los resultados del diseño
+        ...
+        manual_ac: Razón A/C impuesta por usuario (opcional)
+        manual_aire_litros: Volumen de aire en litros impuesto (opcional)
     """
     # 0. Obtener requisitos de durabilidad
     req_durabilidad = REQUISITOS_DURABILIDAD.get(condicion_exposicion, REQUISITOS_DURABILIDAD["Sin riesgo"])
@@ -447,43 +438,65 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
     # 1. Resistencia media
     fd_mpa, fd_kgcm2 = calcular_resistencia_media(resistencia_fc, desviacion_std, fraccion_def)
     
-    # 3. Razón agua/cemento (por resistencia)
-    ac_ratio_resistencia = obtener_razon_ac(fd_kgcm2)
+    # --- LOGICA MAGALLANES / USUARIO ---
     
-    # Aplicar restricción de durabilidad (el menor A/C rige)
-    ac_ratio = min(ac_ratio_resistencia, max_ac_durabilidad)
+    # 2. Razón A/C
+    if manual_ac is not None:
+        ac_ratio = manual_ac
+    else:
+        ac_ratio_resistencia = obtener_razon_ac(fd_kgcm2)
+        ac_ratio = min(ac_ratio_resistencia, max_ac_durabilidad)
+
+    # 3. Cantidad de Cemento
+    # Si usamos lógica directa (Magallanes), calculamos cemento primero desde Fd.
+    # Fórmula aproximada común: C = Fd / K (K~0.5) o C = Fd * 0.95 aprox en código anterior
+    # Mantendremos la lógica de calcular C basado en Fd si hay manual A/C? 
+    # El usuario dijo: "Conocemos la cantidad de cemento". 
+    # El sistema DEBE calcular el cemento inicial de alguna forma.
+    # Usaremos la fórmula de eficiencia que ya existía: C = fd * 0.95
+    cemento = calcular_cemento(fd_kgcm2, factor_eficiencia=0.95)
     
-    # 4. Agua de amasado (por demanda de trabajabilidad ACI)
-    # Asentamiento viene en 'consistencia' si es el string mapeado, o necesitamos el asentamiento real
-    from config.config import CONSISTENCIAS
-    rango_asentamiento = CONSISTENCIAS.get(consistencia, '6-9 cm')
+    # 4. Agua de Amasado
+    # Si el usuario define A/C -> Agua = Cemento * A/C
+    # Si NO define A/C (Modo ACI) -> Agua = ACI Tables -> Cemento = Agua / A/C
     
-    agua_base = estimar_agua_amasado(rango_asentamiento, tmn)
+    modo_calculo_agua = "ACI"
     
-    # --- NUEVO: Lógica de Reducción de Agua por Aditivos ---
-    # Los plastificantes permiten lograr el mismo slump con menos agua.
-    reduccion_agua_pct = 0.0
-    
-    if aditivos_config:
-        for ad in aditivos_config:
-            nombre_ad = ad['nombre'].lower()
-            if "superplastificante" in nombre_ad or "hiperplastificante" in nombre_ad:
-                reduccion_agua_pct += 0.12 # 12% reducción moderada conservadora (puede ser hasta 30%)
-            elif "plastificante" in nombre_ad:
-                reduccion_agua_pct += 0.05 # 5% reducción
-                
-    # Limitar reducción máxima (seguridad)
-    reduccion_agua_pct = min(reduccion_agua_pct, 0.30)
-    
-    agua_amasado = agua_base * (1.0 - reduccion_agua_pct)
-    
+    if manual_ac is not None:
+        modo_calculo_agua = "RELACION_AC"
+        agua_amasado = cemento * ac_ratio
+    else:
+        # Modo ACI (Estándar anterior)
+        from config.config import CONSISTENCIAS
+        rango_asentamiento = CONSISTENCIAS.get(consistencia, '6-9 cm')
+        agua_base = estimar_agua_amasado(rango_asentamiento, tmn)
+        
+        # Reducción por aditivos solo aplica si estimamos desde tabla ACI
+        # Si calculamos directo C*A/C, asumimos que esa A/C ya considera la química
+        reduccion_agua_pct = 0.0
+        if aditivos_config:
+            for ad in aditivos_config:
+                nombre_ad = ad['nombre'].lower()
+                if "superplastificante" in nombre_ad or "hiperplastificante" in nombre_ad:
+                    reduccion_agua_pct += 0.12 
+                elif "plastificante" in nombre_ad:
+                    reduccion_agua_pct += 0.05
+        reduccion_agua_pct = min(reduccion_agua_pct, 0.30)
+        agua_amasado = agua_base * (1.0 - reduccion_agua_pct)
+        
+        # Recalcular cemento basado en esta agua
+        cemento_por_agua = calcular_cemento_por_agua(agua_amasado, ac_ratio, min_cemento_durabilidad)
+        # Usamos el mayor para seguridad
+        cemento = max(cemento, cemento_por_agua)
+
     # 5. Aire ocluido (volumen)
-    aire = obtener_aire_ocluido(tmn, aire_porcentaje)
+    if manual_aire_litros is not None:
+        aire = manual_aire_litros
+    else:
+        aire = obtener_aire_ocluido(tmn, aire_porcentaje)
     
-    # 2. Cantidad de cemento (Calculado desde agua y A/C, respetando minimos)
-    cemento = calcular_cemento_por_agua(agua_amasado, ac_ratio, min_cemento_durabilidad)
-    
-    # Calcular Aditivos
+    # 6. Compacidad (Ajustada por aditivos) -> Previo calculo Aditivos
+    # Calcular Aditivos primero para tener volumen
     aditivos_res = []
     volumen_aditivos_lt = 0.0
     
