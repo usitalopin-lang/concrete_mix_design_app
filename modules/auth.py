@@ -51,8 +51,8 @@ def login_screen():
         st.markdown("<p style='text-align: center;'>Inicia sesión para continuar</p>", unsafe_allow_html=True)
         
         with st.form("login_form"):
-            email = st.text_input("Correo Electrónico")
-            password = st.text_input("Contraseña", type="password")
+            email = st.text_input("Correo Electrónico", placeholder="usuario@ejemplo.com", key="login_email")
+            password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña", key="login_password")
             submitted = st.form_submit_button("Entrar", use_container_width=True)
             
             if submitted:

@@ -15,6 +15,15 @@ def main():
     
     # Gatekeeper: Login Check
     if not st.session_state.get('authenticated'):
+        # Ocultar sidebar de navegación cuando no hay sesión
+        st.markdown("""
+            <style>
+                [data-testid="stSidebar"] {
+                    display: none;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
         st.info("Inicia sesión para acceder a las herramientas.")
         login_screen()
         return
