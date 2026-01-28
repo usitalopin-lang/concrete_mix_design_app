@@ -38,6 +38,10 @@ def inicializar_estado():
 def sidebar_inputs():
     """Renderiza los inputs comunes del Sidebar (Proyecto, Materiales)."""
     
+    # No mostrar sidebar si no está autenticado
+    if not st.session_state.get('authenticated'):
+        return {}
+    
     # Cloud Save/Load (Común para todos)
     with st.sidebar.expander("☁️ Nube", expanded=False):
         if st.button("Guardar en Nube", use_container_width=True):

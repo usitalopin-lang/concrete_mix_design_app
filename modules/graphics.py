@@ -15,6 +15,49 @@ COLOR_ADVERTENCIA = '#d62728' # Rojo
 COLOR_FONDO = '#ffffff'
 COLOR_GRILLA = '#e5e5e5'
 
+def mostrar_resultados_faury(resultados: Dict):
+    """
+    Muestra los resultados del diseño Faury-Joisel en formato tabular.
+    
+    Args:
+        resultados: Diccionario con resultados del diseño
+    """
+    import streamlit as st
+    import pandas as pd
+    
+    st.markdown("### 📊 Resultados del Diseño Faury-Joisel")
+    
+    # Métricas principales
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Cemento", f"{resultados['cemento']['cantidad']:.1f} kg/m³")
+    col2.metric("Agua", f"{resultados['agua_cemento']['agua_amasado']:.1f} L/m³")
+    col3.metric("A/C", f"{resultados['agua_cemento']['razon_ac']:.3f}")
+    col4.metric("Aire", f"{resultados['aire']['volumen']:.1f} L/m³")
+    
+    # Tabla de cantidades
+    st.markdown("#### Cantidades de Materiales")
+    data_materiales = {
+        'Material': ['Cemento'] + list(resultados['cantidades_kg_m3'].keys()) + ['Agua Total', 'Aire'],
+        'Cantidad': [
+            f"{resultados['cemento']['cantidad']:.1f} kg",
+            *[f"{v:.1f} kg" for v in resultados['cantidades_kg_m3'].values()],
+            f"{resultados['agua_cemento']['agua_total']:.1f} L",
+            f"{resultados['aire']['volumen']:.1f} L"
+        ]
+    }
+    df_mat = pd.DataFrame(data_materiales)
+    st.dataframe(df_mat, use_container_width=True, hide_index=True)
+    
+    # Granulometría de la mezcla
+    if 'granulometria_mezcla' in resultados:
+        st.markdown("#### Granulometría de la Mezcla")
+        tamices = ['2"', '1.5"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
+        df_gran = pd.DataFrame({
+            'Tamiz': tamices,
+            '% Pasante': resultados['granulometria_mezcla']
+        })
+        st.dataframe(df_gran, use_container_width=True, hide_index=True)
+
 def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict) -> go.Figure:
     """
     Crea un gráfico interactivo de Shilstone usando Plotly.
