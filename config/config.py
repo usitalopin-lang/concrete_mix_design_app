@@ -49,4 +49,10 @@ REQUISITOS_DURABILIDAD = {
     "Sulfatos/Marino": {'max_ac': 0.40, 'min_cemento': 350}
 }
 
+# Tolerancias banda de trabajo (+/- %)
+TOLERANCIAS_BANDA = {
+    '2"': 0, '1 1/2"': 4, '1"': 4, '3/4"': 4, '1/2"': 4, '3/8"': 4,
+    '#4': 4, '#8': 4, '#16': 4, '#30': 4, '#50': 3, '#100': 2, '#200': 3
+}
+
 DEFAULTS = {'fc': 250, 'desviacion': 40, 'densidad_cemento': 3100, 'tmn': 19.0}
