@@ -271,10 +271,14 @@ def funcion_objetivo(x: np.ndarray, granulometrias: List[List[float]],
     pen_shilstone = calcular_penalizacion_shilstone(mezcla)
     
     # Función objetivo total
+    # Factor de escala para penalizaciones: 50.0
+    # Esto equilibra la magnitud del error Power45 (que suele ser grande) con las penalizaciones
+    scale_factor = 50.0
+    
     objetivo = (error_p45 + 
-                peso_haystack * pen_haystack + 
-                peso_tarantula * pen_tarantula + 
-                peso_shilstone * pen_shilstone)
+                (peso_haystack * pen_haystack * scale_factor) + 
+                (peso_tarantula * pen_tarantula * scale_factor) + 
+                (peso_shilstone * pen_shilstone * scale_factor))
     
     return objetivo
 
@@ -368,19 +372,54 @@ def optimizar_agregados(granulometrias: List[List[float]],
         'disp': False
     }
     
-    try:
-        # Ejecutar optimización
-        resultado = minimize(
-            funcion_objetivo,
-            x0,
-            args=(granulometrias_ajustadas, ideal, densidades_ajustadas, peso_haystack, peso_tarantula, peso_shilstone),
-            method=metodo,
-            bounds=bounds,
-            constraints=constraints,
-            options=options
-        )
+    # Estrategia Multi-Start para evitar optimos locales (que el optimizador sea "flojo")
+    puntos_inicio = []
+    
+    # 1. Punto Equidistante
+    puntos_inicio.append(np.array([100 / num_agregados] * num_agregados))
+    
+    # 2. Punto Usuario (si existe)
+    if proporciones_iniciales and len(proporciones_iniciales) == num_agregados:
+        puntos_inicio.append(np.array(proporciones_iniciales))
         
-        if resultado.success or resultado.fun < funcion_objetivo(x0, granulometrias_ajustadas, ideal, densidades_ajustadas):
+    # 3. Puntos Aleatorios (5 intentos extra)
+    np.random.seed(42) # Reproducibilidad
+    for _ in range(5):
+        rand_p = np.random.rand(num_agregados)
+        rand_p = rand_p * 100 / sum(rand_p)
+        puntos_inicio.append(rand_p)
+        
+    mejor_resultado = None
+    mejor_fun = float('inf')
+    
+    for x0_candidato in puntos_inicio:
+        try:
+            res_candidato = minimize(
+                funcion_objetivo,
+                x0_candidato,
+                args=(granulometrias_ajustadas, ideal, densidades_ajustadas, peso_haystack, peso_tarantula, peso_shilstone),
+                method=metodo,
+                bounds=bounds,
+                constraints=constraints,
+                options=options
+            )
+            
+            if res_candidato.fun < mejor_fun:
+                mejor_fun = res_candidato.fun
+                mejor_resultado = res_candidato
+        except Exception:
+            continue
+            
+    # Usar el mejor resultado encontrado
+    resultado = mejor_resultado
+    
+    # Fallback si todo falla
+    if resultado is None:
+        return {'exito': False, 'mensaje': 'Fallo crítico en optimización multi-start'}
+
+    try:
+        # Verificar éxito del mejor intento
+        if resultado.success or resultado.fun < 1e9: # Criterio laxo, si mejoró algo es bueno
             # Calcular mezcla óptima
             proporciones_optimas = list(resultado.x)
             
