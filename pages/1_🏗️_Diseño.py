@@ -71,10 +71,30 @@ with tab1:
                 )
                 
                 # Análisis Shilstone
+                # Análisis Shilstone - Preparación de datos correctos
+                
+                # Calcular peso total de áridos y densidad SSS de arena representativa
+                cantidades = resultado_faury['cantidades_kg_m3']
+                peso_grava = cantidades.get('grava', 0)
+                peso_arena = cantidades.get('arena', 0)
+                peso_aridos_total = peso_grava + peso_arena
+                
+                # Densidad promedio ponderada si hay múltiples arenas, o tomar la primera
+                dsss_arena = 2650 # Valor default seguro
+                for a in aridos:
+                    if a['tipo'] != 'Grueso':
+                        dsss_arena = a['DRSSS']
+                        break
+
                 resultado_shilstone = calcular_shilstone_completo(
-                    resultado_faury['granulometria_mezcla'],
-                    TAMICES_MM,
-                    resultado_faury['cemento']['cantidad']
+                    granulometria_mezcla=resultado_faury['granulometria_mezcla'],
+                    cemento=resultado_faury['cemento']['cantidad'],
+                    peso_aridos_total=peso_aridos_total,
+                    dsss_arena=dsss_arena,
+                    agua_neta=resultado_faury['agua_cemento']['agua_total'],
+                    densidad_cemento=resultado_faury['cemento']['densidad'],
+                    aditivos=resultado_faury.get('volumen_aditivos', 0),
+                    aire=resultado_faury['aire']['volumen']
                 )
                 
                 # Guardar en session_state
