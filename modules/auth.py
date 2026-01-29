@@ -1,12 +1,55 @@
 """
 Módulo de autenticación de usuarios.
 Gestiona el inicio de sesión verificando credenciales contra Google Sheets.
+Incluye persistencia de sesión mediante cookies para mantener login entre refrescos.
 """
 
 import streamlit as st
 import bcrypt
 import time
+import json
 from modules import database
+from streamlit_cookies_manager import EncryptedCookieManager
+
+# Inicializar cookie manager (solo una vez)
+@st.cache_resource
+def get_cookie_manager():
+    """Obtiene una instancia del gestor de cookies."""
+    return EncryptedCookieManager(
+        prefix="concrete_app_",
+        password=st.secrets.get("COOKIE_PASSWORD", "default_secret_key_change_in_production")
+    )
+
+def restore_session_from_cookies():
+    """Restaura la sesión desde cookies si existe."""
+    cookies = get_cookie_manager()
+    
+    if not cookies.ready():
+        st.stop()
+    
+    # Verificar si hay sesión guardada en cookies
+    if 'authenticated' in cookies and cookies['authenticated'] == 'true':
+        if 'authenticated' not in st.session_state or not st.session_state.get('authenticated'):
+            # Restaurar datos de sesión
+            st.session_state['authenticated'] = True
+            st.session_state['user_email'] = cookies.get('user_email', '')
+            st.session_state['user_name'] = cookies.get('user_name', '')
+
+def save_session_to_cookies(email: str, name: str):
+    """Guarda la sesión en cookies."""
+    cookies = get_cookie_manager()
+    cookies['authenticated'] = 'true'
+    cookies['user_email'] = email
+    cookies['user_name'] = name
+    cookies.save()
+
+def clear_session_cookies():
+    """Limpia las cookies de sesión."""
+    cookies = get_cookie_manager()
+    cookies['authenticated'] = 'false'
+    cookies['user_email'] = ''
+    cookies['user_name'] = ''
+    cookies.save()
 
 def verificar_password(password_plano: str, password_hash: str) -> bool:
     """Verifica si la contraseña coincide con el hash."""
@@ -80,6 +123,10 @@ def login_screen():
                                 st.session_state['authenticated'] = True
                                 st.session_state['user_email'] = email
                                 st.session_state['user_name'] = usuario.get('nombre', email.split('@')[0])
+                                
+                                # Guardar sesión en cookies para persistencia
+                                save_session_to_cookies(email, usuario.get('nombre', email.split('@')[0]))
+                                
                                 st.success("¡Bienvenido!")
                                 time.sleep(1)
                                 st.rerun()
@@ -93,4 +140,8 @@ def logout():
     st.session_state['authenticated'] = False
     st.session_state['user_email'] = None
     st.session_state['user_name'] = None
+    
+    # Limpiar cookies
+    clear_session_cookies()
+    
     st.rerun()

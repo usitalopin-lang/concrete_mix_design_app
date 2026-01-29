@@ -1,6 +1,6 @@
 import streamlit as st
 from modules.utils_ui import inicializar_estado
-from modules.auth import login_screen, logout
+from modules.auth import login_screen, logout, restore_session_from_cookies
 
 st.set_page_config(
     page_title="Mix Design App",
@@ -10,6 +10,9 @@ st.set_page_config(
 
 def main():
     inicializar_estado()
+    
+    # Restaurar sesión desde cookies si existe
+    restore_session_from_cookies()
     
     st.markdown('<h1 style="text-align: center;">🏗️ Sistema de Diseño de Mezclas</h1>', unsafe_allow_html=True)
     
