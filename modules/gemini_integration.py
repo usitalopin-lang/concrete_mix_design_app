@@ -175,7 +175,9 @@ DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
     
     if 'cemento' in fj:
         cem = fj['cemento']
-        prompt += f"\n- Cemento ({datos_mezcla.get('tipo_cemento', 'General')}): {cem.get('cantidad', 0):.0f} kg/m³"
+        cem_info = datos_mezcla.get('cemento_datos', {})
+        prompt += f"\n- Cemento: {cem_info.get('Marca', 'N/A')} {cem_info.get('Tipo', 'N/A')} (Clase {cem_info.get('Clase', '-')})"
+        prompt += f"\n- Cantidad Cemento: {cem.get('cantidad', 0):.0f} kg/m³"
     
     if 'agua_cemento' in fj:
         ac = fj['agua_cemento']
