@@ -255,14 +255,16 @@ def restriccion_suma_100(x: np.ndarray) -> float:
     return sum(x) - 100
 
 
+from config.config import PESOS_OPTIMIZACION
+
 def optimizar_agregados(granulometrias: List[List[float]], 
                         tmn: float = 25,
                         num_agregados: int = 2,
                         proporciones_iniciales: Optional[List[float]] = None,
                         densidades: Optional[List[float]] = None,
-                        peso_haystack: float = 0.3,
-                        peso_tarantula: float = 0.3,
-                        peso_shilstone: float = 0.2,
+                        peso_haystack: float = PESOS_OPTIMIZACION['haystack'],
+                        peso_tarantula: float = PESOS_OPTIMIZACION['tarantula'],
+                        peso_shilstone: float = PESOS_OPTIMIZACION['shilstone'],
                         metodo: str = 'SLSQP') -> Dict:
     """
     Optimiza las proporciones de agregados (en MASA) para lograr la mejor curva ideal.

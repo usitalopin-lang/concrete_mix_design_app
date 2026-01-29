@@ -11,13 +11,15 @@ import json
 from modules import database
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# Cookie manager instance (no se puede cachear porque es un widget)
+# Cookie manager instance (se guarda en session_state para evitar duplicados en el mismo run)
 def get_cookie_manager():
-    """Obtiene una instancia del gestor de cookies."""
-    return EncryptedCookieManager(
-        prefix="concrete_app_",
-        password=st.secrets.get("COOKIE_PASSWORD", "default_secret_key_change_in_production")
-    )
+    """Obtiene una instancia del gestor de cookies evitandos duplicados."""
+    if 'cookie_manager' not in st.session_state:
+        st.session_state['cookie_manager'] = EncryptedCookieManager(
+            prefix="concrete_app_",
+            password=st.secrets.get("COOKIE_PASSWORD", "default_secret_key_change_in_production")
+        )
+    return st.session_state['cookie_manager']
 
 def restore_session_from_cookies():
     """Restaura la sesión desde cookies si existe."""

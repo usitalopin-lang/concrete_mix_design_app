@@ -80,6 +80,15 @@ CONSISTENCIAS = {
     'Muy Fluida': '17-21 cm'
 }
 
+# --- Pesos de Importancia (Optimización Multi-objetivo) ---
+# Estos pesos balancean la importancia de cada criterio en la optimización
+PESOS_OPTIMIZACION = {
+    'haystack': 0.30,   # Cumplimiento límites ASTM C33
+    'tarantula': 0.30,  # Cohesión y gradación (pavimentos)
+    'shilstone': 0.20,  # Trabajabilidad y bombeabilidad
+    'power45': 0.20     # Ajuste a la curva ideal matemática (objetivo base)
+}
+
 TMN_OPCIONES = [9.5, 12.5, 19.0, 25.0, 37.5, 50.0]
 
 # Generar lista de opciones desde el diccionario
