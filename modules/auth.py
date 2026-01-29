@@ -65,19 +65,26 @@ def restore_session_from_cookies():
 def save_session_to_cookies(email: str, name: str):
     """Guarda la sesión en cookies."""
     cookies = get_cookie_manager()
-    cookies['authenticated'] = 'true'
-    cookies['user_email'] = email
-    cookies['user_name'] = name
-    cookies['last_activity'] = str(time.time())  # Timestamp inicial
-    cookies.save()
+    # Intentamos guardar en cookies, pero si falla no bloqueamos el login
+    try:
+        cookies['authenticated'] = 'true'
+        cookies['user_email'] = email
+        cookies['user_name'] = name
+        cookies['last_activity'] = str(time.time())  # Timestamp inicial
+        cookies.save()
+    except Exception as e:
+        print(f"Warning: Cookies not ready for saving session ({e})")
 
 def clear_session_cookies():
     """Limpia las cookies de sesión."""
     cookies = get_cookie_manager()
-    cookies['authenticated'] = 'false'
-    cookies['user_email'] = ''
-    cookies['user_name'] = ''
-    cookies.save()
+    try:
+        cookies['authenticated'] = 'false'
+        cookies['user_email'] = ''
+        cookies['user_name'] = ''
+        cookies.save()
+    except Exception:
+        pass
 
 def verificar_password(password_plano: str, password_hash: str) -> bool:
     """Verifica si la contraseña coincide con el hash."""
