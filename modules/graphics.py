@@ -220,9 +220,8 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
     
     return fig
 
-    return fig
-
 def crear_grafico_nsw(tamices_nombres: List[str],
+
                       mezcla_combinada: List[float]) -> go.Figure:
     """
     Gráfico NSW (New South Wales RTA T306).
