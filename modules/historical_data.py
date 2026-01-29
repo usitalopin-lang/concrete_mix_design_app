@@ -232,17 +232,18 @@ def unir_dosificacion_resistencia(df_dos, df_res, filtro_edad=None, fecha_inicio
             
     # 2. Filtro de Fechas (Periodo)
     if fecha_inicio and fecha_fin:
-        if 'fecha_ensayo' in df_res.columns:
-            df_res['fecha_ensayo'] = pd.to_datetime(df_res['fecha_ensayo'], errors='coerce')
+        # Filtrar por Fecha de Confección como solicitó el usuario
+        campo_fecha = 'fecha_confeccion'
+        if campo_fecha in df_res.columns:
+            df_res[campo_fecha] = pd.to_datetime(df_res[campo_fecha], errors='coerce')
             # Filtrar rango
-            mask_fecha = (df_res['fecha_ensayo'].dt.date >= fecha_inicio) & \
-                         (df_res['fecha_ensayo'].dt.date <= fecha_fin)
+            mask_fecha = (df_res[campo_fecha].dt.date >= fecha_inicio) & \
+                         (df_res[campo_fecha].dt.date <= fecha_fin)
             df_res = df_res[mask_fecha]
             
     if df_res.empty:
-         # Si el filtro dejó vacío el historial, retornamos las recetas solas (sin stats)
-         # Ojo: si retornamos df_dos directo, no tendrá las columnas de stats y podría romper algo.
-         # Mejor dejar que siga el flujo y stats saldrán NaN.
+         # Si el filtro dejó vacío el historial de resistencias, y usamos INNER JOIN más adelante,
+         # el resultado final será vacío. Correcto.
          pass
 
     
@@ -317,7 +318,9 @@ def unir_dosificacion_resistencia(df_dos, df_res, filtro_edad=None, fecha_inicio
     ).reset_index()
     
     # Unimos
-    df_final = pd.merge(df_dos, stats, on='clave_mix', how='left')
+    # MODIFICADO: Usamos INNER join para que el filtro de fechas en la tabla derecha (stats -> df_res)
+    # filtre efectivamente las recetas que se muestran. Si no hay ensayos en la fecha, la receta no sale.
+    df_final = pd.merge(df_dos, stats, on='clave_mix', how='inner')
     
     return df_final
 
