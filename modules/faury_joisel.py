@@ -83,7 +83,9 @@ def calcular_cemento(fd_kgcm2: float, factor_eficiencia: float = 0.95) -> float:
         Cantidad de cemento en kg/m³
     """
     C = round(fd_kgcm2 * factor_eficiencia / 5) * 5
-    return max(C, 250)  # Mínimo 250 kg/m³ por durabilidad
+    # MAGALLANES ESTRICTO: No aplicar mínimos normativos aquí
+    # Los requisitos de durabilidad se informan como advertencias, no como restricciones
+    return C
 
 
 def obtener_razon_ac(fd_kgcm2: float) -> float:
