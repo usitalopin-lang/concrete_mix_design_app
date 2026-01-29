@@ -222,40 +222,62 @@ def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
                                         retenidos_vals: List[float],
                                         tmn: float = 25.0) -> go.Figure:
     """
-    Tarantula Style: % Retained Individual (Updated to match Excel screenshot)
+    Tarantula Style: % Retained Volumetric (Pixel-Perfect Calibration)
+    Based on User's Excel Screenshot.
     """
     fig = go.Figure()
 
-    # Límites exactos Excel (Líneas Azules Punteadas)
-    # 2" a 1": 0-0
-    # 3/4": 0-20
-    # 1/2" a #4: 4-20
-    # #8 a #16: 0-12
-    # #30 a #50: 4-20
-    # #100: 0-10
-    # #200: 0-0
+    # LÍMITES EXACTOS (Forma "Castillo" extraída visualmente del Excel)
+    # Mapeo por índice de tamiz estándar (2", 1.5", 1", 3/4", 1/2", 3/8", #4, #8, #16, #30, #50, #100, #200)
+    # Total 13 tamices típicos.
     
-    # Crear vectores de límites "escalonados" visualmente
-    # Pero para simplificar en plotly usaremos lineas directas
-    # Mapeo manual aproximado a la visual del Excel
+    # Upper Limit (Línea Azul Punteada Superior)
+    # 2"->0, 1.5"->16, 1"->20, 3/4"->20, 1/2"->20, 3/8"->20, #4->20, #8->12, #16->12, #30->20, #50->20, #100->10, #200->0
+    lim_sup_vals = [0, 16, 20, 20, 20, 20, 20, 12, 12, 20, 20, 10, 0]
     
-    lim_sup = [0, 0, 0, 20, 20, 20, 20, 12, 12, 20, 20, 10, 0] # Extendiendo a 13 valores
-    lim_inf = [0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 0, 0]
+    # Lower Limit (Línea Azul Punteada Inferior)
+    # 2"->0, ... 3/4"->0, 1/2"->4, 3/8"->4, #4->4, #8->0, #16->0, #30->4, #50->4, #100->0, #200->0
+    lim_inf_vals = [0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 0, 0]
     
-    # Ajustar longitud a tamices input
-    n = len(tamices_nombres)
-    lim_sup = lim_sup[:n]
-    lim_inf = lim_inf[:n]
+    # Tamices Estándar para alinear (Ajustaremos a los que vengan en tamices_nombres)
+    tamices_std = ['2"', '1 1/2"', '1"', '3/4"', '1/2"', '3/8"', '#4', '#8', '#16', '#30', '#50', '#100', '#200']
     
+    # Crear vectores de límites alineados con el input real
+    y_sup = []
+    y_inf = []
+    
+    for t in tamices_nombres:
+        # Normalizar nombre para busqueda
+        t_clean = t.replace('Nº', '#').strip()
+        idx = -1
+        
+        # Buscar en lista estándar
+        for i, std in enumerate(tamices_std):
+            if std == t_clean: # Coincidencia exacta
+                idx = i
+                break
+            if std.replace('"', '') == t_clean.replace('"', ''): # Intento sin comillas
+                idx = i
+                break
+                
+        if idx != -1:
+            y_sup.append(lim_sup_vals[idx])
+            y_inf.append(lim_inf_vals[idx])
+        else:
+            # Si no está en, default 0
+            y_sup.append(0)
+            y_inf.append(0)
+    
+    # Líneas Límite (Azul Punteado)
     fig.add_trace(go.Scatter(
-        x=tamices_nombres, y=lim_sup,
-        mode='lines', name='Limits',
+        x=tamices_nombres, y=y_sup,
+        mode='lines', name='Upper Limit',
         line=dict(color='blue', width=1, dash='dash'),
         hoverinfo='skip'
     ))
     fig.add_trace(go.Scatter(
-        x=tamices_nombres, y=lim_inf,
-        mode='lines',
+        x=tamices_nombres, y=y_inf,
+        mode='lines', name='Lower Limit',
         line=dict(color='blue', width=1, dash='dash'),
         showlegend=False, hoverinfo='skip'
     ))
@@ -264,29 +286,46 @@ def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
     fig.add_trace(go.Scatter(
         x=tamices_nombres, y=retenidos_vals,
         mode='lines+markers', name='Percent Retained, % vol',
-        line=dict(color='red', width=3),
-        marker=dict(symbol='diamond', size=8, color='red')
+        line=dict(color='red', width=2),
+        marker=dict(symbol='diamond', size=7, color='cyan', line=dict(color='red', width=1)),
+        hovertemplate='Retenido: %{y:.1f}%<extra></extra>'
     ))
 
+    # Layout Técnico
     fig.update_layout(
-        title=dict(text="Tarantula", font=dict(size=20, family="Times New Roman")),
+        title=dict(text="Tarantula", font=dict(size=20, family="Times New Roman", color="black")),
         xaxis=dict(
             title="Sieve",
             showgrid=True, gridcolor='black', linecolor='black', mirror=True,
-            tickangle=-90
+            tickangle=-90,
+            title_font=dict(size=14, family="Arial Black")
         ),
         yaxis=dict(
             title="Percent Retained, % vol",
             range=[0, 25],
-            showgrid=True, gridcolor='black', linecolor='black', mirror=True
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True,
+            title_font=dict(size=14, family="Arial Black")
         ),
         template="plotly_white",
-        width=800, height=400,
+        width=800, height=450,
         legend=dict(
-            x=0.6, y=0.9,
+            x=0.01, y=0.99,
             bordercolor="black", borderwidth=1, bgcolor="white"
         )
     )
+    
+    # Anotación Explicativa (Cuadro de Texto)
+    fig.add_annotation(
+        x=0.8, y=0.95, xref="paper", yref="paper",
+        text="Greater than 15% on the sum of<br>#8, #16 and #30<br>24-34% of fine sand (#30-200)",
+        showarrow=False,
+        align="left",
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1,
+        font=dict(size=10, color="black")
+    )
+    
     return fig
 
 def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
