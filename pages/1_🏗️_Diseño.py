@@ -277,12 +277,22 @@ with tab4:
                     # Gráfico 2D visual del punto
                     import plotly.graph_objects as go
                     fig_mat = go.Figure()
-                    fig_mat.add_trace(go.Scatter(x=[x_trab], y=[y_coh], mode='markers', marker=dict(size=20, color='red')))
+                    # Dibujar cuadrantes
+                    fig_mat.add_vline(x=0.5, line_width=1, line_dash="dash", line_color="gray")
+                    fig_mat.add_hline(y=0.5, line_width=1, line_dash="dash", line_color="gray")
+                    # El punto rojo (ADN)
+                    fig_mat.add_trace(go.Scatter(
+                        x=[x_trab], y=[y_coh], 
+                        mode='markers+text',
+                        marker=dict(size=25, color='red', symbol='cross', line=dict(width=2, color='darkred')),
+                        name="ADN Elegido"
+                    ))
                     fig_mat.update_layout(
-                        title="Matriz de Consistencia",
-                        xaxis=dict(title="Trabajabilidad", range=[0, 1]),
-                        yaxis=dict(title="Cohesión", range=[0, 1]),
-                        width=250, height=250, margin=dict(l=20, r=20, t=40, b=20)
+                        xaxis=dict(title="Trabajabilidad →", range=[0, 1], showgrid=False),
+                        yaxis=dict(title="Cohesión ↑", range=[0, 1], showgrid=False),
+                        width=300, height=300, margin=dict(l=40, r=20, t=20, b=40),
+                        showlegend=False,
+                        plot_bgcolor='white'
                     )
                     st.plotly_chart(fig_mat, use_container_width=False, config={'displayModeBar': False})
                 
