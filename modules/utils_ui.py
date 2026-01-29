@@ -443,8 +443,29 @@ def input_aridos_ui():
 
             if sel_cat != "Personalizado":
                 # Buscar todas las coincidencias
-                coincidencias = [a for a in aridos_cat if a['Nombre'] == sel_cat]
+                coincidencias_raw = [a for a in aridos_cat if a['Nombre'] == sel_cat]
                 
+                # --- FILTRO ESTRICTO PARA DISEÑO ---
+                # Solo mostrar muestras con Densidad Real y al menos un tamiz con valor > 0
+                coincidencias = []
+                for c in coincidencias_raw:
+                    # Verificar Densidad
+                    tiene_densidad = float(c.get('Densidad_Real', 0)) > 0
+                    
+                    # Verificar Granulometría (al menos un tamiz con valor > 0)
+                    tiene_granulometria = False
+                    from config import MAPEO_COLUMNAS_EXCEL
+                    for col_excel in MAPEO_COLUMNAS_EXCEL.keys():
+                        if float(c.get(col_excel, 0)) > 0:
+                            tiene_granulometria = True
+                            break
+                    
+                    if tiene_densidad and tiene_granulometria:
+                        coincidencias.append(c)
+                
+                if not coincidencias and coincidencias_raw:
+                    st.warning(f"⚠️ Las {len(coincidencias_raw)} muestras de '{sel_cat}' en el catálogo están incompletas (faltan densidades o tamices).")
+
                 if len(coincidencias) > 1:
                     # Crear etiquetas para identificar las muestras
                     # Buscamos columnas distintivas: id_muestra (N° Muestra), Identificacion, Lote, Fecha
