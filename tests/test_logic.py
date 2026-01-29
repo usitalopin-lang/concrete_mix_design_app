@@ -12,7 +12,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.faury_joisel import disenar_mezcla_faury
-from config.config import DEFAULTS
+from config import DEFAULTS
 
 def test_logic():
     print("🧪 Iniciando pruebas de lógica avanzada...\n")

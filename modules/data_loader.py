@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
-from config.config import TAMICES_ASTM, MAPEO_COLUMNAS_EXCEL
+from config import TAMICES_ASTM, MAPEO_COLUMNAS_EXCEL
 
 # Nombre de la hoja en Google Sheets
 SHEET_ARIDOS = "Cat_Aridos"

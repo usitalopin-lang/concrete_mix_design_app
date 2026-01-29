@@ -292,7 +292,7 @@ def restriccion_suma_100(x: np.ndarray) -> float:
     return sum(x) - 100
 
 
-from config.config import PESOS_OPTIMIZACION
+from config import PESOS_OPTIMIZACION
 
 def optimizar_agregados(granulometrias: List[List[float]], 
                         tmn: float = 25,

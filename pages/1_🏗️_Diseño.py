@@ -1,5 +1,5 @@
 import streamlit as st
-from config.config import TAMICES_MM, TAMICES_ASTM
+from config import TAMICES_MM, TAMICES_ASTM
 from modules.utils_ui import inicializar_estado, sidebar_inputs, sidebar_user_info, input_aridos_ui
 from modules.faury_joisel import disenar_mezcla_faury
 from modules.shilstone import calcular_shilstone_completo

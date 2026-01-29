@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple, Optional
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.config import (
+from config import (
     TABLA_AC, TABLA_AIRE, TABLA_COEF_T, PARAMETROS_FAURY,
     TAMICES_MM, TAMICES_ASTM, TOLERANCIAS_BANDA, TABLA_AGUA_ACI,
     REQUISITOS_DURABILIDAD

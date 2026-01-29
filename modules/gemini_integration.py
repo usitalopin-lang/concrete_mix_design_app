@@ -172,6 +172,7 @@ DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
 
     # 3. Datos Generales de Diseño
     prompt += f"\n\n[DATOS DE DISEÑO]"
+    prompt += f"\n- APLICACIÓN / DESTINO: {datos_mezcla.get('aplicacion', 'No especificada')}"
     
     if 'resistencia' in fj:
         res = fj['resistencia']
@@ -190,7 +191,7 @@ DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
 
     # 4. Tabla Granulométrica Completa (Para que la IA no alucine)
     prompt += f"\n\n[GRANULOMETRÍA COMBINADA COMPLETA]"
-    from config.config import TAMICES_ASTM
+    from config import TAMICES_ASTM
     mezcla_comb = fj.get('granulometria_mezcla', [])
     prompt += "\nTamiz | % Pasante | % Retenido"
     prompt += "\n------|------------|-----------"

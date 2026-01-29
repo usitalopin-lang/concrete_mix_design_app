@@ -7,7 +7,7 @@ que se reutilizan en las distintas páginas.
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from config.config import (
+from config import (
     DEFAULTS, CONSISTENCIAS, EXPOSICION_OPCIONES, TAMICES_ASTM, TMN_OPCIONES
 )
 from modules import catalogs
@@ -241,6 +241,14 @@ def sidebar_inputs():
         help="Tamaño de la partícula de árido más grande en la mezcla."
     )
 
+    from config import APLICACIONES_HORMIGON
+    aplicacion = st.sidebar.selectbox(
+        "Aplicación / Uso del Hormigón",
+        options=APLICACIONES_HORMIGON,
+        key="aplicacion",
+        help="Define el uso final para que la IA y el diseño sean precisos (Bombeo, Pavimentos, etc.)"
+    )
+
     st.sidebar.markdown("---")
     
     # Sección: Cemento (Catálogo)
@@ -327,6 +335,7 @@ def sidebar_inputs():
         'consistencia': consistencia,
         'asentamiento': asentamiento,
         'tmn': tmn,
+        'aplicacion': aplicacion,
         'razon_ac_manual': razon_ac_manual,
         'aire_litros_manual': aire_litros_manual,
         'tipo_cemento': tipo_cemento,
@@ -419,7 +428,7 @@ def input_aridos_ui():
                     sel_muestra_idx = 0
             
             # Valores por defecto base
-            from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
+            from config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
             nombre_def, drs_def, drsss_def, abs_def, tipo_def = "Árido", 2650.0, 2700.0, 1.0, "Grueso"
             gran_def = [0.0] * 12 # Default vacío
             
