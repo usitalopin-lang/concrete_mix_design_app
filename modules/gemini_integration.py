@@ -98,30 +98,50 @@ def crear_prompt_analisis(datos_mezcla: Dict) -> str:
     Returns:
         Prompt formateado para Gemini
     """
-    prompt = """Eres un experto en tecnología del concreto y diseño de mezclas.
-Analiza los siguientes datos de una mezcla de concreto diseñada con el método Faury-Joisel
-para un laboratorio en la Región de Magallanes, Chile (zona de clima frío y ciclos de hielo-deshielo).
-Proporciona un análisis técnico detallado en español.
+    prompt = """ACTÚA COMO: Ingeniero Senior Experto en Tecnología del Hormigón.
+CONTEXTO: Laboratorio de control de calidad en Región de Magallanes, Chile.
+CONDICIONES: Clima frío, ciclos de hielo-deshielo (bajas temperaturas).
 
-DATOS DE LA MEZCLA:
+TU MISIÓN:
+Analizar la siguiente mezcla diseñada por el método Faury-Joisel + Optimización Matemática.
+Debes ser CRÍTICO y TÉCNICO. No des consejos genéricos. Usa los siguientes criterios de referencia:
+
+CRITERIOS DE EVALUACIÓN EXPERTA:
+1. CURVA TARÁNTULA:
+   - Retenido en tamices 8-30 (Arena gruesa): Debe sumar >15% para cohesión.
+   - Retenido en tamices 30-200 (Arena fina): Debe estar entre 24-34% para terminación.
+   - Límites individuales: Ningún tamiz individual > 20% (excepto posiblemente el peak).
+
+2. GRÁFICO SHILSTONE (Coarseness vs Workability):
+   - ZONA I (Tendencia Óptima): CF [45-75], Wadj [29-45]. Excelente trabajabilidad.
+   - ZONA II (Arenosa): CF < 45. Mezcla pegajosa, alta demanda de agua.
+   - ZONA III (Pedregosa): CF > 75. Riesgo de segregación, termina mal.
+   - ZONA IV (Indeseable): Wadj > 45. Exceso de finos/pasta.
+   - ZONA V (Rocosa): Wadj < 29. Muy áspera.
+
+3. DURABILIDAD (MAGALLANES):
+   - CRÍTICO: El aire ocluido debe estar entre 4.5% - 6.0% por ciclo hielo-deshielo.
+   - Razón A/C máxima sugerida: 0.45 para intemperie.
+
+DATOS DE LA MEZCLA A ANALIZAR:
 """
     
     # Agregar datos relevantes
     if 'resistencia' in datos_mezcla.get('faury_joisel', {}):
         res = datos_mezcla['faury_joisel']['resistencia']
-        prompt += f"\n- Resistencia de diseño (fd): {res.get('fd_mpa', 0):.1f} MPa"
+        prompt += f"\n- Resistencia objetivo (fd): {res.get('fd_mpa', 0):.1f} MPa"
     
     if 'cemento' in datos_mezcla.get('faury_joisel', {}):
         cem = datos_mezcla['faury_joisel']['cemento']
-        prompt += f"\n- Cantidad de cemento: {cem.get('cantidad', 0):.0f} kg/m³"
+        prompt += f"\n- Cemento ({datos_mezcla.get('cemento_tipo', 'General')}): {cem.get('cantidad', 0):.0f} kg/m³"
     
     if 'agua_cemento' in datos_mezcla.get('faury_joisel', {}):
         ac = datos_mezcla['faury_joisel']['agua_cemento']
-        prompt += f"\n- Razón agua/cemento: {ac.get('razon', 0):.3f}"
-        prompt += f"\n- Agua total: {ac.get('agua_total', 0):.1f} lt/m³"
+        prompt += f"\n- Razón A/C: {ac.get('razon', 0):.3f}"
+        prompt += f"\n- Agua libre: {ac.get('agua_total', 0):.1f} lt/m³"
     
     if 'compacidad' in datos_mezcla.get('faury_joisel', {}):
-        prompt += f"\n- Compacidad: {datos_mezcla['faury_joisel']['compacidad']:.4f}"
+        prompt += f"\n- Compacidad teórica (z): {datos_mezcla['faury_joisel']['compacidad']:.4f}"
     
     # Datos Aditivos
     if 'aditivos' in datos_mezcla.get('faury_joisel', {}):
@@ -129,31 +149,53 @@ DATOS DE LA MEZCLA:
         if aditivos:
             prompt += f"\n- Aditivos:"
             for ad in aditivos:
-                prompt += f"\n  * {ad['nombre']}: {ad['dosis_pct']}% ({ad['cantidad_kg']} kg/m³)"
+                prompt += f"\n  * {ad['nombre']}: {ad['dosis_pct']}% ({ad['cantidad_kg']:.2f} kg/m³)"
     
     # Datos Shilstone
     if 'shilstone' in datos_mezcla:
         shil = datos_mezcla['shilstone']
-        prompt += f"\n\nANÁLISIS SHILSTONE:"
+        prompt += f"\n\nPARÁMETROS SHILSTONE CALCULADOS:"
         prompt += f"\n- Coarseness Factor (CF): {shil.get('CF', 0):.1f}"
-        prompt += f"\n- Workability Factor ajustado (Wadj): {shil.get('Wadj', 0):.1f}"
+        prompt += f"\n- Workability Factor (Wadj): {shil.get('Wadj', 0):.1f}"
         prompt += f"\n- Factor de Mortero (FM): {shil.get('FM', 0):.1f} lt/m³"
         if 'evaluacion' in shil:
-            prompt += f"\n- Zona: {shil['evaluacion'].get('zona', '-')}"
-            prompt += f"\n- Calidad: {shil['evaluacion'].get('calidad', '-')}"
-    
+            prompt += f"\n- Clasificación Preliminar: {shil['evaluacion'].get('zona', '-')}"
+
+    # Datos de Optimización (Error)
+    try:
+        import streamlit as st
+        if 'res_opt' in st.session_state and st.session_state.res_opt:
+            err = st.session_state.res_opt.get('error_total', 0)
+            prompt += f"\n\nAJUSTE MATEMÁTICO (Power 45):"
+            prompt += f"\n- Desviación RSS: {err:.1f}"
+            if err > 1000:
+                 prompt += " (NOTA: Desviación muy alta, posible Gap-Grading o falta de árido intermedio)."
+    except ImportError:
+        # Streamlit not available, skip this section
+        pass
+
     prompt += """
+--------------------------------------------------------------------------------
+FORMATO DE RESPUESTA REQUERIDO:
 
-Por favor proporciona:
-1. EVALUACIÓN GENERAL: ¿La mezcla cumple con los estándares típicos?
-2. ANÁLISIS DE TRABAJABILIDAD: Basado en los factores Shilstone
-3. DURABILIDAD POTENCIAL: Considerando la razón a/c y contenido de cemento
-4. PUNTOS FUERTES: Aspectos positivos del diseño
-5. ÁREAS DE MEJORA: Aspectos que podrían optimizarse
-6. RECOMENDACIONES: Sugerencias específicas para mejorar la mezcla
+### 1. 🔍 Diagnóstico Ejecutivo
+(Resumen en 2 líneas: ¿Es viable? ¿Tiene riesgos mayores? ¿Pasa o no pasa?)
 
-Responde de forma técnica pero clara, estructurando tu análisis con los puntos anteriores."""
+### 2. 🧪 Análisis Reológico y Trabajabilidad
+- Evalúa la posición en el Gráfico Shilstone.
+- Comenta sobre la bombeabilidad basada en el Factor de Mortero.
+- ¿Hay riesgo de segregación (CF > 75) o terminación pegajosa (CF < 45)?
 
+### 3. 🛡️ Durabilidad y Resistencia
+- Evalúa la razón A/C para clima de Magallanes.
+- **Verifica el contenido de aire**: ¿Es suficiente para hielo-deshielo?
+- Comenta sobre la eficiencia del cemento.
+
+### 4. ⚠️ Alertas Críticas y Recomendaciones
+- Lista numerada de acciones correctivas inmediatas.
+- Si la desviación matemática es alta, sugiere cambios en la granulometría de los áridos.
+--------------------------------------------------------------------------------
+"""
     return prompt
 
 
