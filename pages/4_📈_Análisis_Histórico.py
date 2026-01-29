@@ -37,8 +37,17 @@ periodo = st.sidebar.date_input(
 
 # Filtro de Edad de Ensayo (Global)
 # Primero obtenemos las edades disponibles en la base de datos
-edades_disp = sorted(df_res['edad_dias'].dropna().unique().astype(int).tolist()) if not df_res.empty and 'edad_dias' in df_res.columns else [7, 28]
-# Default: 28 días si existe, sino todo
+edades_disp = [7, 28] # Default
+if not df_res.empty and 'edad_dias' in df_res.columns:
+    try:
+        # Convertir a numérico forzado (errores -> NaN)
+        s_edades = pd.to_numeric(df_res['edad_dias'], errors='coerce').dropna()
+        if not s_edades.empty:
+            edades_disp = sorted(s_edades.unique().astype(int).tolist())
+    except Exception:
+        pass # Mantener default si falla algo catastrófico
+
+# Default: 28 días si existe, sino None (o todo)
 default_edad = [28] if 28 in edades_disp else None
 sel_edad = st.sidebar.multiselect("Edad de Ensayo (días)", edades_disp, default=default_edad)
 
