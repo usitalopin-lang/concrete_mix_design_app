@@ -165,7 +165,7 @@ def sidebar_inputs():
     resistencia_fc = st.sidebar.number_input(
         "Resistencia especificada fc' (MPa)",
         min_value=15.0, max_value=80.0,
-        value=30.0, step=1.0,
+        step=1.0,
         key="resistencia_fc"
     )
 
@@ -175,7 +175,7 @@ def sidebar_inputs():
         razon_ac_manual = st.number_input(
             "Razón A/C Objetivo",
             min_value=0.20, max_value=1.50,
-            value=0.43, step=0.01, format="%.2f",
+            step=0.01, format="%.2f",
             key="razon_ac_manual",
             help="Razón Agua/Cemento a utilizar en el diseño."
         )
