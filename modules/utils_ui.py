@@ -543,9 +543,18 @@ def input_aridos_ui():
                  idx_tipo = opts_tipo.index(tipo_def)
                  
             tipo = st.selectbox("Tipo", opts_tipo, index=idx_tipo, key=f"tipo_{sufijo}")
-            drs = st.number_input("DRS", min_value=1500.0, max_value=3500.0, value=drs_def, format="%.0f", key=f"drs_{sufijo}")
-            drsss = st.number_input("DRSSS", min_value=1500.0, max_value=3500.0, value=drsss_def, format="%.0f", key=f"drsss_{sufijo}")
-            absorcion = st.number_input("Abs %", min_value=0.0, max_value=10.0, value=abs_def, step=0.1, format="%.2f", key=f"abs_{sufijo}")
+            
+            # --- Ajuste de Seguridad: Evitar BelowMinError/AboveMaxError ---
+            drs_min, drs_max = 1000.0, 4000.0
+            abs_min, abs_max = 0.0, 20.0
+            
+            drs_val = max(drs_min, min(float(drs_def), drs_max))
+            drsss_val = max(drs_min, min(float(drsss_def), drs_max))
+            abs_val = max(abs_min, min(float(abs_def), abs_max))
+            
+            drs = st.number_input("DRS (Densidad Real Seca)", min_value=drs_min, max_value=drs_max, value=drs_val, format="%.0f", key=f"drs_{sufijo}", help="kg/m³")
+            drsss = st.number_input("DRSSS (Densidad Real SSS)", min_value=drs_min, max_value=drs_max, value=drsss_val, format="%.0f", key=f"drsss_{sufijo}", help="kg/m³")
+            absorcion = st.number_input("Abs % (Absorción)", min_value=abs_min, max_value=abs_max, value=abs_val, step=0.1, format="%.2f", key=f"abs_{sufijo}")
             
             st.markdown("**Granulometría**")
             
