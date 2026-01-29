@@ -223,19 +223,30 @@ with tab4:
         col_opt1, col_opt2 = st.columns([1, 2])
         
         with col_opt1:
+            # Validación de datos antes de optimizar
+            datos_validos = True
+            for i, g in enumerate(grans):
+                if sum(g) == 0:
+                    st.warning(f"⚠️ El Árido {i+1} no tiene datos granulométricos (suma=0).")
+                    datos_validos = False
+            
             st.info(f"Optimizando {len(aridos)} áridos...")
-            if st.button("🚀 Ejecutar Optimización Multi-objetivo"):
+            
+            if st.button("🚀 Ejecutar Optimización Multi-objetivo", disabled=not datos_validos, help="Requiere datos de granulometría válidos en todos los áridos"):
                 with st.spinner("Optimizando..."):
                     res_opt = optimizar_agregados(grans, tmn=st.session_state.datos_completos['tmn'])
                     if res_opt['exito']:
                         st.session_state.res_opt = res_opt
-                        st.success(f"✅ Optimización Exitosa! Error Total: {res_opt['error_total']:.4f}")
+                        st.success(f"✅ Optimización Exitosa! Error: {res_opt['error_total']:.2f}")
                     else:
                         st.error("❌ Falló la optimización")
         
         if st.session_state.res_opt:
             res = st.session_state.res_opt
-            st.markdown(f"**Proporciones Sugeridas:** {res['proporciones']}")
+            
+            # Formatear proporciones bonito
+            props_str = ", ".join([f"Árido {i+1}: **{p:.1f}%**" for i, p in enumerate(res['proporciones'])])
+            st.markdown(f"**Proporciones Sugeridas:** {props_str}")
             
             # Gráficos Iowa Suite
             tab_p45, tab_tar, tab_hay, tab_shil = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone"])
