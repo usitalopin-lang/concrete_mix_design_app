@@ -651,8 +651,8 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
             'agua_total': round(agua_total, 1)
         },
         'aire': {
-            'volumen': round(aire, 1),
-            'porcentaje': round(aire / 10, 1)
+            'volumen': round(aire_lt, 1),
+            'porcentaje': round(aire_lt / 10, 1)
         },
         'compacidad': round(compacidad, 4),
         'proporciones_volumetricas': props_vol_final,
