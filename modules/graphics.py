@@ -220,6 +220,120 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
     
     return fig
 
+    
+    return fig
+
+def crear_grafico_illinois(tamices_nombres: List[str],
+                           mezcla_combinada: List[float]) -> go.Figure:
+    """
+    Gráfico Illinois Tollway.
+    Especificación para pavimentos de hormigón (Slipform / Alto Desempeño).
+    
+    Límites derivados de screenshot Usuario:
+    #200: 0-8
+    #100: 1-12
+    #50: 5-17
+    #30: 10-25
+    #16: 18-35
+    #8: 28-45
+    #4: 40-60
+    3/8: 55-77
+    1/2: 65-85
+    3/4: 85-98
+    1": 100-100
+    1 1/2": 100-100
+    2": 100-100
+    """
+    fig = go.Figure()
+    
+    # Definición de límites Illinois (Map key: tame_name -> (min, max))
+    il_limits = {
+        '#200': (0, 8),
+        '#100': (1, 12),
+        '#50': (5, 17),
+        '#30': (10, 25),
+        '#16': (18, 35),
+        '#8': (28, 45),
+        '#4': (40, 60),
+        '3/8"': (55, 77),
+        '1/2"': (65, 85),
+        '3/4"': (85, 98),
+        '1"': (100, 100),
+        '1 1/2"': (100, 100),
+        '2"': (100, 100)
+    }
+    
+    y_low = []
+    y_up = []
+    
+    # Alinear límites
+    for t in tamices_nombres:
+        t_clean = t.replace('Nº', '#').strip().replace('"', '')
+        
+        found = False
+        val = None
+        
+        for k, v in il_limits.items():
+             if k.replace('"', '') == t_clean:
+                 val = v
+                 found = True
+                 break
+        
+        if found:
+            y_low.append(val[0])
+            y_up.append(val[1])
+        else:
+             # Default seguro
+             if "200" in t_clean and "<" in t_clean: y_low.append(0); y_up.append(0)
+             else: y_low.append(None); y_up.append(None)
+
+    # Plotear Límites (Rojos Solidos)
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=y_up,
+        mode='lines', name='IL Upper',
+        line=dict(color='red', width=2),
+        connectgaps=True, hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=y_low,
+        mode='lines', name='IL Lower',
+        line=dict(color='red', width=2),
+        connectgaps=True, showlegend=False, hoverinfo='skip'
+    ))
+
+    # Curva Combinada (Azul con X)
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=mezcla_combinada,
+        mode='lines+markers', name='Combined',
+        line=dict(color='blue', width=3),
+        marker=dict(symbol='x', size=8, color='blue'),
+        hovertemplate='Pasa: %{y:.1f}%<extra></extra>'
+    ))
+
+    fig.update_layout(
+        title=dict(text="IL Tollway", font=dict(size=20, family="Times New Roman", color="black")),
+        xaxis=dict(
+            title="Sieve",
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True,
+            tickangle=-90,
+            title_font=dict(size=14, family="Arial Black")
+        ),
+        yaxis=dict(
+            title="Percent Passing",
+            range=[0, 100],
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True,
+            title_font=dict(size=14, family="Arial Black")
+        ),
+        template="plotly_white",
+        width=800, height=500,
+        legend=dict(
+            x=0.05, y=0.95,
+            bordercolor="black", borderwidth=1, bgcolor="white"
+        )
+    )
+    
+    return fig
+
 def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
                                        mezcla_vals: List[float],
                                        haystack_limits: dict = None) -> go.Figure:

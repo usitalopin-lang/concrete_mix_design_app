@@ -278,8 +278,8 @@ with tab4:
             props_str = ", ".join([f"Árido {i+1}: **{p:.1f}%**" for i, p in enumerate(res['proporciones'])])
             st.markdown(f"**Proporciones Sugeridas:** {props_str}")
             
-            # Gráficos Iowa Suite + C33 + NSW
-            tab_p45, tab_tar, tab_hay, tab_shil, tab_c33, tab_nsw = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone", "C33 & Individual", "NSW"])
+            # Gráficos Iowa Suite + Normativos
+            tab_p45, tab_tar, tab_hay, tab_shil, tab_c33, tab_nsw, tab_il = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone", "C33 & Individual", "NSW", "Illinois Tollway"])
             
             with tab_p45:
                 # Datos para P45 Optimizado
@@ -313,7 +313,7 @@ with tab4:
                 st.plotly_chart(fig, use_container_width=True)
 
             with tab_c33:
-                # Preparar datos de áridos individuales
+                # Datos individuales y C33 ...
                 aridos_data_chart = []
                 for i, a in enumerate(aridos):
                     nombre = a.get('Nombre', f'Árido {i+1}')
@@ -330,27 +330,40 @@ with tab4:
                 with st.expander("ℹ️ ¿Qué es ASTM C33 (Sand)?"):
                     st.markdown("""
                     **ASTM C33 - Standard Specification for Concrete Aggregates**
-                    
-                    En el gráfico, las líneas azules representan los **límites normativos para Agregado Fino (Arena)**.
-                    *   Si tu curva de arena individual cae dentro de estas líneas, cumple la norma.
-                    *   Esta norma asegura que la arena no sea ni muy gruesa (mezcla áspera) ni muy fina (alta demanda de agua).
+                    ... (Ver descripción anterior)
                     """)
 
             with tab_nsw:
                 # Datos para NSW
-                mezcla_comb = res['mezcla_granulometria']
-                if len(mezcla_comb) < len(TAMICES_ASTM): mezcla_comb = mezcla_comb + [0]*(len(TAMICES_ASTM)-len(mezcla_comb))
+                if len(res['mezcla_granulometria']) < len(TAMICES_ASTM):
+                    m = res['mezcla_granulometria'] + [0]*(len(TAMICES_ASTM)-len(res['mezcla_granulometria']))
+                else: m = res['mezcla_granulometria']
                 
-                fig = crear_grafico_nsw(TAMICES_ASTM, mezcla_comb[:len(TAMICES_ASTM)])
+                fig = crear_grafico_nsw(TAMICES_ASTM, m[:len(TAMICES_ASTM)])
                 st.plotly_chart(fig, use_container_width=True)
                 
                 with st.expander("ℹ️ ¿Qué es NSW?"):
                     st.markdown("""
                     **NSW (New South Wales) - RTA T306 Specification**
+                    ... (Ver descripción anterior)
+                    """)
                     
-                    Es una especificación australiana de alto rendimiento para curvas granulométricas combinadas.
-                    *   **Objetivo:** Lograr una curva densa y continua "ideal" para evitar segregación y mejorar la trabajabilidad.
-                    *   Las líneas rojas marcan la "envolvente ideal". Si tu curva combinada (azul) está dentro, tienes una mezcla extremadamente bien graduada y densa.
+            with tab_il:
+                # Datos para Illinois
+                if len(res['mezcla_granulometria']) < len(TAMICES_ASTM):
+                    m = res['mezcla_granulometria'] + [0]*(len(TAMICES_ASTM)-len(res['mezcla_granulometria']))
+                else: m = res['mezcla_granulometria']
+                
+                fig = crear_grafico_illinois(TAMICES_ASTM, m[:len(TAMICES_ASTM)])
+                st.plotly_chart(fig, use_container_width=True)
+                
+                with st.expander("ℹ️ ¿Qué es Illinois Tollway?"):
+                    st.markdown("""
+                    **Illinois Tollway - Performance Based Specs**
+                    
+                    Es una especificación famosa por optimizar mezclas para **Pavimentos de Hormigón** (especialmente colocación con moldaje deslizante o "Slipform").
+                    *   Busca una trabajabilidad perfecta y alta densidad para resistir el vibrado sin segregarse.
+                    *   Si trabajas en pavimentos o pisos industriales, esta curva es una excelente referencia.
                     """)
 
 with tab5:
