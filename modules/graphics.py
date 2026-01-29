@@ -220,8 +220,97 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
     
     return fig
 
+    return fig
+
+def crear_grafico_nsw(tamices_nombres: List[str],
+                      mezcla_combinada: List[float]) -> go.Figure:
+    """
+    Gráfico NSW (New South Wales RTA T306).
+    Curva ideal envolvente para pavimentos y hormigones densos.
+    
+    Límites derivados de screenshot Usuario:
+    #200: 0-7
+    #100: 5-15
+    #50: 16-30
+    #30: 22-34
+    #16: 30-42
+    #8: 38-50
+    #4: 55-75
+    3/8: 75-90
+    1/2: 95-100
+    3/4: 100-100
+    """
+    fig = go.Figure()
+    
+    # Definición de límites NSW (Map key: tame_name -> (min, max))
+    nsw_limits = {
+        '#200': (0, 7),
+        '#100': (5, 15),
+        '#50': (16, 30),
+        '#30': (22, 34),
+        '#16': (30, 42),
+        '#8': (38, 50),
+        '#4': (55, 75),
+        '3/8"': (75, 90),
+        '1/2"': (95, 100),
+        '3/4"': (100, 100),
+        '1"': (100, 100),
+        '1 1/2"': (100, 100),
+        '2"': (100, 100)
+    }
+    
+    y_low = []
+    y_up = []
+    
+    # Alinear límites
+    for t in tamices_nombres:
+        t_clean = t.replace('Nº', '#').strip().replace('"', '')
+        
+        found = False
+        val = None
+        
+        for k, v in nsw_limits.items():
+             if k.replace('"', '') == t_clean:
+                 val = v
+                 found = True
+                 break
+        
+        if found:
+            y_low.append(val[0])
+            y_up.append(val[1])
+        else:
+            if "200" in t_clean and "<" in t_clean: y_low.append(0); y_up.append(0)
+            else: y_low.append(None); y_up.append(None)
+
+    # Plotear Límites
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=y_up, mode='lines', name='NSW Upper',
+        line=dict(color='red', width=2), connectgaps=True, hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=y_low, mode='lines', name='NSW Lower',
+        line=dict(color='red', width=2), connectgaps=True, showlegend=False, hoverinfo='skip'
+    ))
+
+    # Curva Combinada
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=mezcla_combinada,
+        mode='lines+markers', name='Combined',
+        line=dict(color='blue', width=3),
+        marker=dict(symbol='x', size=8, color='blue'),
+        hovertemplate='Pasa: %{y:.1f}%<extra></extra>'
+    ))
+
+    fig.update_layout(
+        title=dict(text="NSW", font=dict(size=20, family="Times New Roman", color="black")),
+        xaxis=dict(title="Sieve", showgrid=True, gridcolor='black', linecolor='black', mirror=True, tickangle=-90, title_font=dict(size=14, family="Arial Black")),
+        yaxis=dict(title="Percent Passing", range=[0, 100], showgrid=True, gridcolor='black', linecolor='black', mirror=True, title_font=dict(size=14, family="Arial Black")),
+        template="plotly_white", width=800, height=500,
+        legend=dict(x=0.05, y=0.95, bordercolor="black", borderwidth=1, bgcolor="white")
+    )
     
     return fig
+
 
 def crear_grafico_illinois(tamices_nombres: List[str],
                            mezcla_combinada: List[float]) -> go.Figure:
@@ -334,13 +423,14 @@ def crear_grafico_illinois(tamices_nombres: List[str],
     
     return fig
 
-def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
-                                       mezcla_vals: List[float],
-                                       haystack_limits: dict = None) -> go.Figure:
+def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
+                                        retenidos_vals: List[float],
+                                        tmn: float = 25.0) -> go.Figure:
     """
     Tarantula Style: % Retained Volumetric (Pixel-Perfect Calibration)
     Based on User's Excel Screenshot.
     """
+    fig = go.Figure()
 
     # LÍMITES EXACTOS (Forma "Castillo" extraída visualmente del Excel)
     # Mapeo por índice de tamiz estándar (2", 1.5", 1", 3/4", 1/2", 3/8", #4, #8, #16, #30, #50, #100, #200)
