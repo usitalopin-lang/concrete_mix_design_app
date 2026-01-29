@@ -213,19 +213,20 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
         legend=dict(
             x=0.7, y=0.1,
             bordercolor="black", borderwidth=1, bgcolor="white"
+            x=0.05, y=0.95,
+            bordercolor="black", borderwidth=1, bgcolor="white"
         )
     )
-
+    
     return fig
 
-def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
-                                        retenidos_vals: List[float],
-                                        tmn: float = 25.0) -> go.Figure:
+def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
+                                       mezcla_vals: List[float],
+                                       haystack_limits: dict = None) -> go.Figure:
     """
     Tarantula Style: % Retained Volumetric (Pixel-Perfect Calibration)
     Based on User's Excel Screenshot.
     """
-    fig = go.Figure()
 
     # LÍMITES EXACTOS (Forma "Castillo" extraída visualmente del Excel)
     # Mapeo por índice de tamiz estándar (2", 1.5", 1", 3/4", 1/2", 3/8", #4, #8, #16, #30, #50, #100, #200)

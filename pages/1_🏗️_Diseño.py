@@ -278,8 +278,8 @@ with tab4:
             props_str = ", ".join([f"Árido {i+1}: **{p:.1f}%**" for i, p in enumerate(res['proporciones'])])
             st.markdown(f"**Proporciones Sugeridas:** {props_str}")
             
-            # Gráficos Iowa Suite + C33
-            tab_p45, tab_tar, tab_hay, tab_shil, tab_c33 = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone", "C33 & Individual"])
+            # Gráficos Iowa Suite + C33 + NSW
+            tab_p45, tab_tar, tab_hay, tab_shil, tab_c33, tab_nsw = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone", "C33 & Individual", "NSW"])
             
             with tab_p45:
                 # Datos para P45 Optimizado
@@ -316,23 +316,42 @@ with tab4:
                 # Preparar datos de áridos individuales
                 aridos_data_chart = []
                 for i, a in enumerate(aridos):
-                    # Nombre + Datos
                     nombre = a.get('Nombre', f'Árido {i+1}')
-                    # Asegurar longitud
                     g = grans[i]
-                    if len(g) < len(TAMICES_ASTM):
-                        g = g + [0]*(len(TAMICES_ASTM)-len(g))
+                    if len(g) < len(TAMICES_ASTM): g = g + [0]*(len(TAMICES_ASTM)-len(g))
                     aridos_data_chart.append({'nombre': nombre, 'granulometria': g[:len(TAMICES_ASTM)]})
                 
-                # Curva combinada
                 mezcla_comb = res['mezcla_granulometria']
-                if len(mezcla_comb) < len(TAMICES_ASTM):
-                    mezcla_comb = mezcla_comb + [0]*(len(TAMICES_ASTM)-len(mezcla_comb))
+                if len(mezcla_comb) < len(TAMICES_ASTM): mezcla_comb = mezcla_comb + [0]*(len(TAMICES_ASTM)-len(mezcla_comb))
                 
                 fig = crear_grafico_individual_combinado(TAMICES_ASTM, aridos_data_chart, mezcla_comb[:len(TAMICES_ASTM)])
                 st.plotly_chart(fig, use_container_width=True)
                 
-                st.info("ℹ️ **Sobre ASTM C33:** Las líneas azules muestran los límites normativos estándar para la Arena (Agregado Fino).")
+                with st.expander("ℹ️ ¿Qué es ASTM C33 (Sand)?"):
+                    st.markdown("""
+                    **ASTM C33 - Standard Specification for Concrete Aggregates**
+                    
+                    En el gráfico, las líneas azules representan los **límites normativos para Agregado Fino (Arena)**.
+                    *   Si tu curva de arena individual cae dentro de estas líneas, cumple la norma.
+                    *   Esta norma asegura que la arena no sea ni muy gruesa (mezcla áspera) ni muy fina (alta demanda de agua).
+                    """)
+
+            with tab_nsw:
+                # Datos para NSW
+                mezcla_comb = res['mezcla_granulometria']
+                if len(mezcla_comb) < len(TAMICES_ASTM): mezcla_comb = mezcla_comb + [0]*(len(TAMICES_ASTM)-len(mezcla_comb))
+                
+                fig = crear_grafico_nsw(TAMICES_ASTM, mezcla_comb[:len(TAMICES_ASTM)])
+                st.plotly_chart(fig, use_container_width=True)
+                
+                with st.expander("ℹ️ ¿Qué es NSW?"):
+                    st.markdown("""
+                    **NSW (New South Wales) - RTA T306 Specification**
+                    
+                    Es una especificación australiana de alto rendimiento para curvas granulométricas combinadas.
+                    *   **Objetivo:** Lograr una curva densa y continua "ideal" para evitar segregación y mejorar la trabajabilidad.
+                    *   Las líneas rojas marcan la "envolvente ideal". Si tu curva combinada (azul) está dentro, tienes una mezcla extremadamente bien graduada y densa.
+                    """)
 
 with tab5:
     st.markdown("### 🤖 Análisis con IA (Gemini)")
