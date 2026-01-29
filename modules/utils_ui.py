@@ -319,17 +319,36 @@ def sidebar_inputs():
                 
                 dosis_def = 0.5
                 densidad_def = 1.2 
+                caracteristica = ""
                 if datos_ad:
-                    dosis_def = float(datos_ad.get('Dosis_Min', 0.5))
-                    densidad_def = float(datos_ad.get('Densidad', 1.2))
+                    dosis_def = datos_ad.get('Dosis_Min', 0.5)
+                    densidad_def = datos_ad.get('Densidad', 1.2)
+                    caracteristica = datos_ad.get('Caracteristica', "")
+                
+                if caracteristica:
+                    st.caption(f"ℹ️ {caracteristica}")
                 
                 col_dosis, col_dens = st.columns(2)
                 with col_dosis:
-                    dosis = st.number_input(f"% Dosis ({aditivo})", min_value=0.0, max_value=10.0, value=dosis_def, step=0.1, key=f"dosis_{aditivo}")
-                with col_dens:
-                    densidad = st.number_input(f"Densidad (kg/L)", min_value=0.5, max_value=3.0, value=densidad_def, step=0.1, key=f"dens_{aditivo}")
+                    # Permitir elegir modo de dosis (Porcentaje o Fijo L/m3)
+                    modo_dosis = st.radio("Unidad", ["% p.c.", "L/m³"], horizontal=True, key=f"modo_{aditivo}")
+                    
+                    help_dosis = f"Sugerido (Catálogo): Min: {datos_ad.get('Dosis_Min', 0)} / Max: {datos_ad.get('Dosis_Max', 0)}" if datos_ad else ""
+                    
+                    if modo_dosis == "L/m³":
+                        val_dosis = st.number_input(f"L/m³", min_value=0.0, max_value=50.0, value=float(dosis_def), step=0.1, key=f"d_fija_{aditivo}", help=help_dosis)
+                        item_ad = {'nombre': aditivo, 'dosis_fija_lt': val_dosis}
+                    else:
+                        val_dosis = st.number_input(f"% Dosis", min_value=0.0, max_value=10.0, value=float(dosis_def), step=0.1, key=f"d_pct_{aditivo}", help=help_dosis)
+                        item_ad = {'nombre': aditivo, 'dosis_pct': val_dosis}
                 
-                aditivos_config.append({'nombre': aditivo, 'dosis_pct': dosis, 'densidad_kg_lt': densidad})
+                with col_dens:
+                    st.write("") # Alineación visual
+                    st.write("") 
+                    densidad = st.number_input(f"Densidad (kg/L)", min_value=0.0, max_value=3.0, value=float(densidad_def), step=0.01, key=f"dens_{aditivo}")
+                    item_ad['densidad_kg_lt'] = densidad
+                
+                aditivos_config.append(item_ad)
 
     # Botón guardar JSON local
     st.sidebar.markdown("### 💾 Local")

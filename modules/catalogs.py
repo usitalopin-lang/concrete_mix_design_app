@@ -8,6 +8,7 @@ Maneja conversión de decimales con coma (localización Chile).
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import re
 
 # Nombres de las hojas en Google Sheets
 SHEET_CEMENTOS = 'Cat_Cementos'
@@ -36,15 +37,31 @@ def obtener_conexion():
     """Obtiene o crea la conexión con Google Sheets."""
     return st.connection("gsheets", type=GSheetsConnection)
 
+def safe_parse_numeric(val, default=0.0):
+    """Extrae el primer número (entero o decimal) de un valor/string."""
+    if val is None or pd.isna(val):
+        return default
+    if isinstance(val, (int, float)):
+        return float(val)
+    
+    # Convertir a string, reemplazar coma por punto y limpiar
+    s = str(val).replace(',', '.')
+    
+    # Buscar el primer número (entero o decimal)
+    match = re.search(r"(\d+\.?\d*)", s)
+    if match:
+        try:
+            return float(match.group(1))
+        except (ValueError, TypeError):
+            return default
+    return default
+
 def limpiar_decimales(df, columnas):
-    """Convierte columnas numéricas con coma a float."""
+    """Convierte columnas numéricas con coma o texto técnico a float de forma robusta."""
     for col in columnas:
         if col in df.columns:
-            # Convertir a string, reemplazar coma por punto, luego a float
-            try:
-                df[col] = df[col].astype(str).str.replace(',', '.').astype(float)
-            except Exception:
-                pass # Mantener como está si falla
+            # Aplicar parsing robusto fila a fila
+            df[col] = df[col].apply(lambda x: safe_parse_numeric(x))
     return df
 
 @st.cache_data(ttl=600)  # Cache de 10 minutos
@@ -121,6 +138,15 @@ def obtener_aditivos():
     try:
         conn = obtener_conexion()
         df = conn.read(worksheet=SHEET_ADITIVOS, ttl=0)
+        
+        # Mapeo de columnas adicionales
+        rename_map = {
+            'Nombre Comercial': 'Nombre',
+            'Característica Principal / Uso': 'Caracteristica',
+            'Dosis Mínima': 'Dosis_Min',
+            'Dosis Máxima': 'Dosis_Max'
+        }
+        df.rename(columns=rename_map, inplace=True)
         
         # Limpiar decimales
         df = limpiar_decimales(df, ['Densidad', 'Dosis_Min', 'Dosis_Max'])

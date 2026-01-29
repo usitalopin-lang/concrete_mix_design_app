@@ -491,18 +491,24 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
     if aditivos_config:
         for ad in aditivos_config:
             nombre = ad['nombre']
-            dosis_pct = ad['dosis_pct']
+            dosis_pct = ad.get('dosis_pct', 0.0)
+            dosis_fija_lt = ad.get('dosis_fija_lt', 0.0)
             densidad = ad['densidad_kg_lt']
             
-            # Dosis % del peso de cemento
-            peso_ad = cemento * (dosis_pct / 100.0)
-            vol_ad = peso_ad / densidad
+            # Si hay dosis fija (L/m3), usar eso. Si no, calcular por % cemento.
+            if dosis_fija_lt > 0:
+                vol_ad = dosis_fija_lt
+                peso_ad = vol_ad * densidad
+            else:
+                peso_ad = cemento * (dosis_pct / 100.0)
+                vol_ad = peso_ad / densidad
             
             aditivos_res.append({
                 'nombre': nombre,
                 'cantidad_kg': round(peso_ad, 3),
                 'volumen_lt': round(vol_ad, 3),
-                'dosis_pct': dosis_pct
+                'dosis_pct': dosis_pct if dosis_fija_lt == 0 else 0,
+                'dosis_fija_lt': dosis_fija_lt
             })
             volumen_aditivos_lt += vol_ad
 
