@@ -71,13 +71,21 @@ PERFILES_ADN = {
         'desc': "Balance ideal para uso general y estructuras convencionales.",
         'icon': "⚖️"
     },
-    'Pavimentos': {
-        'haystack': 0.20,
+    'Pavimento Slipform': {
+        'haystack': 0.00,
         'tarantula': 0.50,
         'shilstone': 0.15,
-        'power45': 0.15,
-        'desc': "Prioriza la cohesión para evitar segregación durante la vibración intensa (Slipform).",
-        'icon': "🛣️"
+        'power45': 0.35,
+        'desc': "Alta cohesión (Green Strength) para máquinas de molde deslizante. Prioriza Tarantula.",
+        'icon': "🚜"
+    },
+    'Pavimento Manual': {
+        'haystack': 0.00,
+        'tarantula': 0.15,
+        'shilstone': 0.60,
+        'power45': 0.25,
+        'desc': "Alta trabajabilidad para terminación manual. Prioriza Shilstone (mortero) para cerrar superficie.",
+        'icon': "👷"
     },
     'Bombeable': {
         'haystack': 0.15,
