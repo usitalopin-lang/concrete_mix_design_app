@@ -400,10 +400,10 @@ def input_aridos_ui():
                     datos = coincidencias[0]
             
             # Valores por defecto base
+            from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
             nombre_def, drs_def, drsss_def, abs_def, tipo_def = "Árido", 2650.0, 2700.0, 1.0, "Grueso"
             gran_def = [0.0] * 12 # Default vacío
             
-            # Si se selecciona algo del catálogo, sobrescribir defaults
             # Si se selecciona algo del catálogo, sobrescribir defaults
             if datos: # Ya tenemos los datos exactos (sea único o elegido)
                 nombre_def = datos.get('Nombre', nombre_def)
@@ -428,7 +428,8 @@ def input_aridos_ui():
                     drsss_def = drs_def * (1 + abs_def/100)
                     
                 # Cargar Granulometría usando el Mapeo
-                from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
+                
+                # Crear diccionario de granulometría mapeada
                 
                 # Crear diccionario de granulometría mapeada
                 gran_leida = {}
