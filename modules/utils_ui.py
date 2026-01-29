@@ -407,27 +407,27 @@ def input_aridos_ui():
             # Si se selecciona algo del catálogo, sobrescribir defaults
             if datos: # Ya tenemos los datos exactos (sea único o elegido)
                 nombre_def = datos.get('Nombre', nombre_def)
-                    tipo_def = datos.get('Tipo', tipo_def)
-                    
-                    def safe_float(val, default=0.0):
-                        if val is None: return default
-                        if isinstance(val, (int, float)): return float(val)
-                        try:
-                            return float(str(val).replace(',', '.'))
-                        except (ValueError, TypeError):
-                            return default
+                tipo_def = datos.get('Tipo', tipo_def)
+                
+                def safe_float(val, default=0.0):
+                    if val is None: return default
+                    if isinstance(val, (int, float)): return float(val)
+                    try:
+                        return float(str(val).replace(',', '.'))
+                    except (ValueError, TypeError):
+                        return default
 
-                    drs_def = safe_float(datos.get('Densidad_Real'), drs_def)
-                    abs_def = safe_float(datos.get('Absorcion'), abs_def)
+                drs_def = safe_float(datos.get('Densidad_Real'), drs_def)
+                abs_def = safe_float(datos.get('Absorcion'), abs_def)
+                
+                # Calcular DRSSS si no viene
+                v_drsss = datos.get('Densidad_SSS')
+                if v_drsss and safe_float(v_drsss) > 0:
+                    drsss_def = safe_float(v_drsss)
+                else:
+                    drsss_def = drs_def * (1 + abs_def/100)
                     
-                    # Calcular DRSSS si no viene
-                    v_drsss = datos.get('Densidad_SSS')
-                    if v_drsss and safe_float(v_drsss) > 0:
-                        drsss_def = safe_float(v_drsss)
-                    else:
-                        drsss_def = drs_def * (1 + abs_def/100)
-                        
-                    # Cargar Granulometría usando el Mapeo
+                # Cargar Granulometría usando el Mapeo
                     from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
                     
                     # Crear diccionario de granulometría mapeada
