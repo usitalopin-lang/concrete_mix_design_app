@@ -414,7 +414,10 @@ with tab4:
                 with st.expander("ℹ️ ¿Qué es ASTM C33 (Sand)?"):
                     st.markdown("""
                     **ASTM C33 - Standard Specification for Concrete Aggregates**
-                    ... (Ver descripción anterior)
+                    
+                    Define los requisitos para la granulometría de áridos finos y gruesos.
+                    *   **Árido Fino (Arena):** Establece límites obligatorios para asegurar un concreto trabajable y resistente. La arena debe estar dentro de la banda mostrada.
+                    *   **Combinación:** Aunque C33 regula los áridos por separado, es vital verificar cómo interactúan en la mezcla total.
                     """)
 
             with tab_nsw:
@@ -429,7 +432,10 @@ with tab4:
                 with st.expander("ℹ️ ¿Qué es NSW?"):
                     st.markdown("""
                     **NSW (New South Wales) - RTA T306 Specification**
-                    ... (Ver descripción anterior)
+                    
+                    Especificación australiana que propone una banda ideal para la **granulometría combinada** de todos los áridos.
+                    *   Es más flexible que las curvas teóricas estrictas (como Fuller).
+                    *   Si tu curva combinada (azul) cae dentro de la banda roja, indica una mezcla bien graduada, con buena densidad y trabajabilidad.
                     """)
                     
             with tab_il:
