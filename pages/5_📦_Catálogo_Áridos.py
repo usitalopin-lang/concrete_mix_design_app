@@ -98,14 +98,14 @@ if 'resultado_arido_actual' in st.session_state:
     col_m1.metric("Muestras", res['n_muestras'])
     
     # Helper simple para mostrar dato o alerta
-    def fmt_metric(val, fmt=":.0f"):
+    def fmt_metric(val, fmt=".0f"):
         if pd.isna(val) or val <= 0:
             return "⚠️ Falta"
-        return f"{val{fmt}}"
+        return f"{val:{fmt}}"
         
     s_drs = fmt_metric(res['DRS'])
     s_drsss = fmt_metric(res['DRSSS'])
-    s_abs = fmt_metric(res['absorcion']*100, ":.2f")
+    s_abs = fmt_metric(res['absorcion']*100, ".2f")
     
     col_m2.metric("DRS (kg/m³)", s_drs)
     col_m3.metric("DRSSS (kg/m³)", s_drsss)
