@@ -449,14 +449,23 @@ def input_aridos_ui():
                 # Solo mostrar muestras con Densidad Real y al menos un tamiz con valor > 0
                 coincidencias = []
                 for c in coincidencias_raw:
+                    # Helper para lidiar con valores no numéricos en Excel (ej: "-", "N/A")
+                    def get_val(val):
+                        if val is None: return 0.0
+                        if isinstance(val, (int, float)): return float(val)
+                        try:
+                            return float(str(val).replace(',', '.'))
+                        except:
+                            return 0.0
+
                     # Verificar Densidad
-                    tiene_densidad = float(c.get('Densidad_Real', 0)) > 0
+                    tiene_densidad = get_val(c.get('Densidad_Real')) > 0
                     
                     # Verificar Granulometría (al menos un tamiz con valor > 0)
                     tiene_granulometria = False
                     from config import MAPEO_COLUMNAS_EXCEL
                     for col_excel in MAPEO_COLUMNAS_EXCEL.keys():
-                        if float(c.get(col_excel, 0)) > 0:
+                        if get_val(c.get(col_excel)) > 0:
                             tiene_granulometria = True
                             break
                     
