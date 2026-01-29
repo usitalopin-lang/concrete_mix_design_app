@@ -95,15 +95,17 @@ def obtener_aridos():
         # Limpiar decimales
         df = limpiar_decimales(df, ['Densidad_Real', 'Densidad_SSS', 'Absorcion'])
 
-        # --- FILTRO DE CALIDAD DE DATOS (Strict) ---
-        # Solo dejar muestras que tengan datos físicos completos
-        if 'Densidad_Real' in df.columns:
-            # Filtrar donde DRS > 0 y no es NaN
-            df = df[pd.to_numeric(df['Densidad_Real'], errors='coerce') > 0]
+        # --- FILTRO DE CALIDAD DE DATOS (Relaxed) ---
+        # Se permiten muestras sin datos físicos completos (densidad/absorción)
+        # El usuario deberá completarlos manualmente en la UI si faltan.
+        
+        # if 'Densidad_Real' in df.columns:
+        #     # Filtrar donde DRS > 0 y no es NaN
+        #     df = df[pd.to_numeric(df['Densidad_Real'], errors='coerce') > 0]
             
-        if 'Absorcion' in df.columns:
-            # Filtrar donde Abs >= 0 (puede ser 0 teoricamente, pero raro, usualmente >0) y no es NaN
-            df = df[pd.to_numeric(df['Absorcion'], errors='coerce') >= 0]
+        # if 'Absorcion' in df.columns:
+        #     # Filtrar donde Abs >= 0 (puede ser 0 teoricamente, pero raro, usualmente >0) y no es NaN
+        #     df = df[pd.to_numeric(df['Absorcion'], errors='coerce') >= 0]
 
         if not df.empty and 'Nombre' in df.columns:
              df = df[df['Activo'] == True] if 'Activo' in df.columns else df

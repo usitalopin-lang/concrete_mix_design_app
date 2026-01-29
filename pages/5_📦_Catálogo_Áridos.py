@@ -96,9 +96,24 @@ if 'resultado_arido_actual' in st.session_state:
     
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     col_m1.metric("Muestras", res['n_muestras'])
-    col_m2.metric("DRS (kg/m³)", f"{res['DRS']:.0f}")
-    col_m3.metric("DRSSS (kg/m³)", f"{res['DRSSS']:.0f}")
-    col_m4.metric("Absorción (%)", f"{res['absorcion']*100:.2f}")
+    
+    # Helper simple para mostrar dato o alerta
+    def fmt_metric(val, fmt=":.0f"):
+        if pd.isna(val) or val <= 0:
+            return "⚠️ Falta"
+        return f"{val{fmt}}"
+        
+    s_drs = fmt_metric(res['DRS'])
+    s_drsss = fmt_metric(res['DRSSS'])
+    s_abs = fmt_metric(res['absorcion']*100, ":.2f")
+    
+    col_m2.metric("DRS (kg/m³)", s_drs)
+    col_m3.metric("DRSSS (kg/m³)", s_drsss)
+    col_m4.metric("Absorción (%)", s_abs)
+    
+    # Alerta si faltan datos físicos
+    if "⚠️" in (s_drs + s_drsss + s_abs):
+        st.warning("⚠️ Atención: Este árido no tiene datos de Densidad o Absorción. Podrás usar su granulometría, pero deberás ingresar las densidades manualmente en la etapa de Diseño.")
     
     st.caption(f"📅 Período: {res['fecha_primero']} → {res['fecha_ultimo']}")
     

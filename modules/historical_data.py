@@ -370,7 +370,12 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
             
     # 2. Eliminar filas que tengan CUALQUIER dato faltante en las columnas claves
     # (Granulometría + Densidades + Absorción)
-    cols_obligatorias = [c for c in cols_claves_fisicas if c in df_filtrado.columns] + tamices_presentes
+    # 2. Eliminar filas que tengan CUALQUIER dato faltante en las columnas claves
+    # (Granulometría + Densidades + Absorción)
+    # MODIFICADO: Relajar filtro. Solo validamos que tenga granulometría.
+    # Si falta densidad, la ignoramos aqui y la manejamos en el promedio.
+    
+    cols_obligatorias = tamices_presentes 
     
     if cols_obligatorias:
         df_filtrado.dropna(subset=cols_obligatorias, inplace=True)
@@ -389,12 +394,18 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
             gran_prom.append(100.0)  # Default si no existe
     
     # Calcular promedios
+    # Calcular promedios de forma segura (0.0 si es NaN)
+    def safe_mean(series, default=0.0):
+        if series.empty: return default
+        m = series.mean()
+        return default if pd.isna(m) else m
+
     resultado = {
         'nombre': tipo_material,
         'tipo': 'Grueso' if 'CHANC' in tipo_material.upper() or 'ROD' in tipo_material.upper() else 'Fino',
-        'DRS': df_filtrado['drs'].mean() if 'drs' in df_filtrado.columns else 2650.0,
-        'DRSSS': df_filtrado['drsss'].mean() if 'drsss' in df_filtrado.columns else 2700.0,
-        'absorcion': df_filtrado['absorcion'].mean() / 100.0 if 'absorcion' in df_filtrado.columns else 0.01,
+        'DRS': safe_mean(df_filtrado['drs'], 0.0) if 'drs' in df_filtrado.columns else 0.0,
+        'DRSSS': safe_mean(df_filtrado['drsss'], 0.0) if 'drsss' in df_filtrado.columns else 0.0,
+        'absorcion': safe_mean(df_filtrado['absorcion'], 0.0) / 100.0 if 'absorcion' in df_filtrado.columns else 0.0,
         'granulometria': gran_prom,
         'n_muestras': len(df_filtrado),
         'fecha_ultimo': df_filtrado['fecha_muestreo'].max(),
