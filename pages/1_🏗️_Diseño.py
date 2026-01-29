@@ -178,15 +178,35 @@ with tab3:
         
         with col_g1:
             st.markdown("#### Diagrama Shilstone")
-            fig_shil = crear_grafico_shilstone_interactivo(shil['CF'], shil['Wadj'])
+            fig_shil = crear_grafico_shilstone_interactivo(shil['CF'], shil['Wadj'], shil['evaluacion'])
             st.plotly_chart(fig_shil, use_container_width=True)
+            
+            # Mostrar evaluación texto
+            st.info(f"**Zona:** {shil['evaluacion']['zona']}\n\n{shil['evaluacion']['descripcion']}")
         
         with col_g2:
             st.markdown("#### Curva Power 0.45")
-            _, ideal = generar_curva_ideal_power45(datos['tmn'], TAMICES_MM)
+            
+            # Preparar datos power45
+            from modules.power45 import generar_curva_ideal_power45, calcular_error_power45, TAMICES_POWER
+            ideal_curve, _ = generar_curva_ideal_power45(tmn=inputs['tmn'])
+            real_curve = faury['granulometria_mezcla']
+            
+            # Asegurar longitud igual
+            min_len = min(len(ideal_curve), len(real_curve))
+            rmse = calcular_error_power45(real_curve[:min_len], ideal_curve[:min_len])
+            
+            from config.config import TAMICES_ASTM 
+            # TAMICES_ASTM puede tener longitud diferente, ajustar
+            nombres = TAMICES_ASTM[:min_len]
+            x_vals = TAMICES_POWER[:min_len]
+            
             fig_p45 = crear_grafico_power45_interactivo(
-                TAMICES_ASTM, TAMICES_MM, 
-                faury['granulometria_mezcla'], ideal
+                tamices_nombres=nombres,
+                tamices_power=x_vals,
+                ideal_vals=ideal_curve[:min_len],
+                real_vals=real_curve[:min_len],
+                rmse=rmse
             )
             st.plotly_chart(fig_p45, use_container_width=True)
 
