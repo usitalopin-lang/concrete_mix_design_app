@@ -86,38 +86,34 @@ def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict
     """
     fig = go.Figure()
 
-    # --- ESTILO TÉCNICO IDÉNTICO AL EXCEL ---
+    # --- ESTILO TÉCNICO IDÉNTICO AL EXCEL (Coordenadas Exactas) ---
     
-    # 1. LÍMITES ZONA I (Banana) - Líneas Negras Gruesas
-    # Superior
+    # Line 1 (Límite Superior)
+    # Excel: (100, 36) -> (35, 45)
     fig.add_trace(go.Scatter(
-        x=[0, 35, 100], y=[45, 45, 36],
-        mode="lines", line=dict(color="black", width=3), showlegend=False, hoverinfo="skip"
-    ))
-    # Inferior
-    fig.add_trace(go.Scatter(
-        x=[0, 15, 85, 100], y=[37, 37, 27, 27],
+        x=[100, 35], y=[36, 45],
         mode="lines", line=dict(color="black", width=3), showlegend=False, hoverinfo="skip"
     ))
     
-    # 2. LÍNEAS DIVISORIAS INTERNAS
-    # Línea divisoria Zona II (Vertical en CF=75 no, es diagonal? No, Excel muestra vertical en CF=45 y 75 aprox)
-    # En el Excel se ve:
-    # - Una linea vertical separando I de II (parece estar en CF=~45)
-    # - Una linea vertical separando II de III (en CF=~75)
-    
+    # Line 2 (Límite Inferior)
+    # Excel: (100, 27) -> (85, 27) -> (15, 37) -> (0, 37)
     fig.add_trace(go.Scatter(
-        x=[45, 45], y=[32, 45], # Vertical I vs II/IV
+        x=[100, 85, 15, 0], y=[27, 27, 37, 37],
+        mode="lines", line=dict(color="black", width=3), showlegend=False, hoverinfo="skip"
+    ))
+    
+    # Line 3 (División Vertical Derecha - Zona V vs III)
+    # Excel: (75, 28.43) -> (75, 39.46)
+    # Nota: Conecta Límite Inferior con Límite Superior
+    fig.add_trace(go.Scatter(
+        x=[75, 75], y=[28.43, 39.46],
         mode="lines", line=dict(color="black", width=2), showlegend=False, hoverinfo="skip"
     ))
     
+    # Line 4 (División Vertical Izquierda - Zona I vs II)
+    # Excel: (45, 32.71) -> (45, 43.62)
     fig.add_trace(go.Scatter(
-        x=[75, 75], y=[27, 45], # Vertical II vs III
-        mode="lines", line=dict(color="black", width=2), showlegend=False, hoverinfo="skip"
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=[0, 100], y=[27, 27], # Base Zona V
+        x=[45, 45], y=[32.71, 43.62],
         mode="lines", line=dict(color="black", width=2), showlegend=False, hoverinfo="skip"
     ))
 
@@ -136,34 +132,29 @@ def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict
         title=dict(text="Shilstone Chart", font=dict(size=24, color="black", family="Times New Roman")),
         xaxis=dict(
             title="Coarseness Factor",
-            range=[100, 0], # INVERTIDO como en el Excel (100 a la izquierda)
+            range=[100, 0], # INVERTIDO
             dtick=20,
-            gridcolor='black',
-            gridwidth=1,
-            zeroline=False,
-            showline=True, linecolor='black', linewidth=2, mirror=True
+            gridcolor='black', gridwidth=1,
+            zeroline=False, showline=True, linecolor='black', linewidth=2, mirror=True
         ),
         yaxis=dict(
             title="Workability Factor",
             range=[20, 45],
             dtick=5,
-            gridcolor='black',
-            gridwidth=1,
-            zeroline=False,
-            showline=True, linecolor='black', linewidth=2, mirror=True
+            gridcolor='black', gridwidth=1,
+            zeroline=False, showline=True, linecolor='black', linewidth=2, mirror=True
         ),
         template="plotly_white",
-        width=700,
-        height=500,
+        width=700, height=500,
         showlegend=False
     )
     
-    # Textos Grandes de Zonas
-    fig.add_annotation(x=90, y=28, text="I<br>Gap", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
+    # Textos Grandes de Zonas (Posiciones ajustadas visualmente al Excel)
+    fig.add_annotation(x=87.5, y=30, text="I<br>Gap", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
     fig.add_annotation(x=60, y=41, text="II", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
-    fig.add_annotation(x=15, y=42, text="III<br>Small Agg", showarrow=False, font=dict(size=14, color="black", family="Arial Black"))
-    fig.add_annotation(x=90, y=42, text="IV<br>Sandy", showarrow=False, font=dict(size=14, color="black", family="Arial Black"))
-    fig.add_annotation(x=35, y=24, text="V<br>Coarse", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
+    fig.add_annotation(x=10, y=41, text="III<br>Small Agg", showarrow=False, font=dict(size=14, color="black", family="Arial Black"))
+    fig.add_annotation(x=87.5, y=42, text="IV<br>Sandy", showarrow=False, font=dict(size=14, color="black", family="Arial Black"))
+    fig.add_annotation(x=30, y=24, text="V<br>Coarse", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
     
     return fig
 
