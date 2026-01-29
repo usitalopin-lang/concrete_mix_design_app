@@ -165,13 +165,37 @@ with tab1:
             st.dataframe(top_mixes)
 
     st.markdown("### Detalle de Recetas con Desviación Real")
-    cols_show = ['codigo', 'grado', 'tmn', 'docilidad', 'cemento_kg', 'agua_lt']
-    if 'n_muestras' in df_view.columns:
-        cols_show += ['n_muestras', 'promedio_fc', 'desviacion_std']
     
-    # Filtrar columnas que existen
-    cols_show = [c for c in cols_show if c in df_view.columns]
-    st.dataframe(df_view[cols_show], use_container_width=True)
+    # Columnas Base (Orden solicitado: Código | Grado | Res. | FD | TMN | Doc.)
+    cols_base = ['codigo', 'grado', 'resistencia', 'fraccion_defectuosa', 'tmn', 'docilidad', 'cemento_kg', 'agua_lt']
+    
+    # Columnas de Stats (si existen)
+    cols_stats = ['n_muestras', 'promedio_fc', 'desviacion_std']
+    
+    # Filtrar columnas que existen en el DF
+    cols_final = [c for c in cols_base if c in df_view.columns] + \
+                 [c for c in cols_stats if c in df_view.columns]
+    
+    # Renombrar para display
+    rename_map = {
+        'codigo': 'Código',
+        'grado': 'Grado',
+        'resistencia': 'Res.',
+        'fraccion_defectuosa': 'FD %',
+        'tmn': 'TMN',
+        'docilidad': 'Doc.',
+        'cemento_kg': 'Cemento (kg)',
+        'agua_lt': 'Agua (lt)',
+        'n_muestras': 'N° Muestras',
+        'promedio_fc': 'f\'c Promedio',
+        'desviacion_std': 'Desv. Std'
+    }
+    
+    st.dataframe(
+        df_view[cols_final].rename(columns=rename_map), 
+        use_container_width=True,
+        hide_index=True
+    )
 
 with tab2:
     st.subheader("Dosificaciones (Raw)")
