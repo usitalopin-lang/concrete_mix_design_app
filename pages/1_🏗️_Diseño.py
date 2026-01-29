@@ -188,7 +188,7 @@ with tab3:
             st.markdown("#### Curva Power 0.45")
             
             # Preparar datos power45
-            from modules.power45 import generar_curva_ideal_power45, calcular_error_power45, TAMICES_POWER
+            from modules.power45 import generar_curva_ideal_power45, calcular_error_power45, TAMICES_POWER45
             ideal_curve, _ = generar_curva_ideal_power45(tmn=inputs['tmn'])
             real_curve = faury['granulometria_mezcla']
             
@@ -199,7 +199,8 @@ with tab3:
             from config.config import TAMICES_ASTM 
             # TAMICES_ASTM puede tener longitud diferente, ajustar
             nombres = TAMICES_ASTM[:min_len]
-            x_vals = TAMICES_POWER[:min_len]
+            # Calcular valores X elevados a 0.45 como espera el gráfico
+            x_vals = [t**0.45 for t in TAMICES_POWER45[:min_len]]
             
             fig_p45 = crear_grafico_power45_interactivo(
                 tamices_nombres=nombres,
