@@ -38,10 +38,15 @@ MAP_RESISTENCIA = {
     'TMN': 'tmn',
     'Docilidad': 'docilidad',
     'Fecha Confección': 'fecha_confeccion',
-    'Fecha de ensayo ': 'fecha_ensayo', # Ojo con el espacio al final
+    'Fecha de ensayo ': 'fecha_ensayo',
     'Fecha de ensayo': 'fecha_ensayo',
+    'Fecha Ensayo': 'fecha_ensayo',
     'Res. Cil. (MPa)': 'resistencia_mpa',
+    'Resistencia': 'resistencia_mpa',
+    'Resistencia (MPa)': 'resistencia_mpa',
+    'f\'c': 'resistencia_mpa',
     'Densidad C. (kg/m3)': 'densidad_kgm3',
+    'Densidad': 'densidad_kgm3',
     'Edad': 'edad_dias', 
     'Edades': 'edad_dias'
 }
@@ -242,7 +247,7 @@ def unir_dosificacion_resistencia(df_dos, df_res):
         df_res['grado_join'] + "_" + 
         clean_num(df_res['fraccion_defectuosa']) + "_" + 
         clean_num(df_res['tmn']) + "_" + 
-        df_res['docilidad']
+        clean_num(df_res['docilidad'])  # Clean docilidad also
     )
     
     # Clave en Dosificaciones
@@ -250,7 +255,7 @@ def unir_dosificacion_resistencia(df_dos, df_res):
         df_dos['grado_join'] + "_" + 
         clean_num(df_dos['fraccion_defectuosa']) + "_" + 
         clean_num(df_dos['tmn']) + "_" + 
-        df_dos['docilidad']
+        clean_num(df_dos['docilidad'])  # Clean docilidad also
     )
     
     
