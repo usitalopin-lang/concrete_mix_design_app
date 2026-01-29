@@ -234,13 +234,28 @@ with tab4:
             st.info(f"Optimizando {len(aridos)} áridos...")
             
             if st.button("🚀 Ejecutar Optimización Multi-objetivo", disabled=not datos_validos, help="Requiere datos de granulometría válidos en todos los áridos"):
-                with st.spinner("Optimizando..."):
+                with st.spinner("Busca la mejor combinación matemática..."):
                     res_opt = optimizar_agregados(grans, tmn=st.session_state.datos_completos['tmn'])
                     if res_opt['exito']:
                         st.session_state.res_opt = res_opt
-                        st.success(f"✅ Optimización Exitosa! Error: {res_opt['error_total']:.2f}")
+                        
+                        # Interpretación Experta del Error (RSS/RMSE)
+                        error_val = res_opt['error_total']
+                        
+                        if error_val < 500:
+                            st.success(f"✅ **Ajuste Excelente** (Desviación: {error_val:.1f})")
+                        elif error_val < 2000:
+                            st.info(f"ℹ️ **Ajuste Aceptable** (Desviación: {error_val:.1f})")
+                        else:
+                            st.warning(f"⚠️ **Ajuste Pobre** (Desviación: {error_val:.1f})")
+                            st.markdown("""
+                                <small>La curva combinada está muy lejos de la ideal. 
+                                Es posible que tus áridos sean "discontinuos" (falta tamaño intermedio).
+                                **Sugerencia:** Prueba agregar un tercer árido de tamaño intermedio.</small>
+                            """, unsafe_allow_html=True)
+                            
                     else:
-                        st.error("❌ Falló la optimización")
+                        st.error("❌ No se pudo converger a una solución.")
         
         if st.session_state.res_opt:
             res = st.session_state.res_opt
