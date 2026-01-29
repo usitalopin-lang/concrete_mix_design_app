@@ -310,6 +310,10 @@ def sidebar_inputs():
                 
                 aditivos_config.append({'nombre': aditivo, 'dosis_pct': dosis, 'densidad_kg_lt': densidad})
 
+    # Botón guardar JSON local
+    st.sidebar.markdown("### 💾 Local")
+    nombre_archivo = st.sidebar.text_input("Nombre Archivo", value=f"Dosificacion_{datetime.now().strftime('%Y%m%d')}", key="nombre_archivo_local")
+    
     # Obtener el objeto cemento completo para metadatos
     cemento_obj = next((c for c in cementos_cat if f"{c['Marca']} - {c['Tipo']}" == tipo_cemento_sel), {})
     
