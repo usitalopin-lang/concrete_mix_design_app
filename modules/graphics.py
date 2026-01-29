@@ -211,8 +211,6 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
         template="plotly_white",
         width=800, height=500,
         legend=dict(
-            x=0.7, y=0.1,
-            bordercolor="black", borderwidth=1, bgcolor="white"
             x=0.05, y=0.95,
             bordercolor="black", borderwidth=1, bgcolor="white"
         )
