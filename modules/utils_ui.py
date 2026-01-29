@@ -355,7 +355,7 @@ def sidebar_inputs():
     nombre_archivo = st.sidebar.text_input("Nombre Archivo", value=f"Dosificacion_{datetime.now().strftime('%Y%m%d')}", key="nombre_archivo_local")
     
     # Obtener el objeto cemento completo para metadatos
-    cemento_obj = next((c for c in cementos_cat if f"{c['Marca']} - {c['Tipo']}" == tipo_cemento_sel), {})
+    cemento_obj = next((c for c in cementos_cat_raw if f"{c['Marca']} - {c['Tipo']}" == tipo_cemento_sel), {})
     
     # Retorna diccionario con todos los inputs
     return {
@@ -372,7 +372,7 @@ def sidebar_inputs():
         'aplicacion': aplicacion,
         'razon_ac_manual': razon_ac_manual,
         'aire_litros_manual': aire_litros_manual,
-        'tipo_cemento': tipo_cemento,
+        'tipo_cemento': tipo_cemento_sel,
         'cemento_datos': cemento_obj, # El objeto completo del catálogo
         'densidad_cemento': densidad_cemento,
         'condicion_exposicion': condicion_exposicion,
