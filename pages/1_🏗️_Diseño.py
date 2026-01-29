@@ -377,7 +377,7 @@ with tab5:
         st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
     else:
         # Intentar cargar desde secrets
-        api_key = st.secrets.get("GEMINI_API_KEY")
+        api_key = st.secrets.get("GOOGLE_API_KEY")
         
         if api_key:
              st.success("🔑 API Key detectada desde configuración (Secrets)")
