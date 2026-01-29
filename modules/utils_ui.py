@@ -323,7 +323,6 @@ def input_aridos_ui():
             return aridos_resultado
     
     # Flujo normal (manual)
-    st.markdown("### Configuración de Áridos")
     num_aridos = st.radio("Número de áridos", options=[2, 3], index=0, horizontal=True)
     aridos = []
     cols = st.columns(num_aridos)

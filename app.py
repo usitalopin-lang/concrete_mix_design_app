@@ -3,7 +3,7 @@ from modules.utils_ui import inicializar_estado
 from modules.auth import login_screen, logout
 
 st.set_page_config(
-    page_title="Mix Design App v2",
+    page_title="Mix Design App",
     page_icon="🏠",
     layout="wide"
 )
