@@ -5,7 +5,8 @@ from modules.faury_joisel import disenar_mezcla_faury
 from modules.shilstone import calcular_shilstone_completo
 from modules.graphics import (
     crear_grafico_shilstone_interactivo, crear_grafico_power45_interactivo,
-    crear_grafico_tarantula_interactivo, crear_grafico_haystack_interactivo
+    crear_grafico_tarantula_interactivo, crear_grafico_haystack_interactivo,
+    crear_grafico_nsw, crear_grafico_illinois
 )
 from modules.power45 import generar_curva_ideal_power45
 from modules.optimization import optimizar_agregados
