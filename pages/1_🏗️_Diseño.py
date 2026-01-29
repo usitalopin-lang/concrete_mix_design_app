@@ -379,9 +379,7 @@ with tab5:
         # Intentar cargar desde secrets
         api_key = st.secrets.get("GOOGLE_API_KEY")
         
-        if api_key:
-             st.success("🔑 API Key detectada desde configuración (Secrets)")
-        else:
+        if not api_key:
              api_key = st.text_input("API Key Gemini", type="password", help="No detectada en secrets.toml")
         
         if api_key and st.button("✨ Analizar con IA"):
