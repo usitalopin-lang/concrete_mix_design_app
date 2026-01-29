@@ -169,11 +169,30 @@ def sidebar_inputs():
         key="resistencia_fc"
     )
 
+    # NUEVO: Inputs Manuales de Diseño (Magallanes) - Movidos al tope
+    col_ac, col_aire = st.sidebar.columns(2)
+    with col_ac:
+        razon_ac_manual = st.number_input(
+            "Razón A/C Objetivo",
+            min_value=0.20, max_value=1.50,
+            value=0.50, step=0.01, format="%.2f",
+            key="razon_ac_manual",
+            help="Razón Agua/Cemento a utilizar en el diseño."
+        )
+    with col_aire:
+        aire_litros_manual = st.number_input(
+            "Aire Total (Litros)",
+            min_value=0.0, max_value=100.0,
+            value=10.0, step=1.0,
+            key="aire_litros_manual",
+            help="Volumen total de aire (atrapado + incorporado) en litros/m3."
+        )
+
     condicion_exposicion = st.sidebar.selectbox(
-        "Condición de Exposición",
+        "Condición de Exposición (Ref)",
         options=EXPOSICION_OPCIONES,
         key="condicion_exposicion",
-        help="Define requisitos mínimos de durabilidad (ACI 318 / NCh170)"
+        help="Calculo estricto por resistencia. Durabilidad es solo referencia."
     )
     
     desviacion_std = st.sidebar.number_input(
@@ -222,23 +241,7 @@ def sidebar_inputs():
         help="Tamaño de la partícula de árido más grande en la mezcla."
     )
 
-    # NUEVO: Inputs Manuales de Diseño (Magallanes)
-    st.sidebar.markdown("#### ⚙️ Parámetros de Diseño")
-    razon_ac_manual = st.sidebar.number_input(
-        "Razón A/C Objetivo",
-        min_value=0.20, max_value=1.50,
-        value=0.50, step=0.01, format="%.2f",
-        key="razon_ac_manual",
-        help="Razón Agua/Cemento a utilizar en el diseño."
-    )
-    
-    aire_litros_manual = st.sidebar.number_input(
-        "Aire Total (Litros)",
-        min_value=0.0, max_value=100.0,
-        value=10.0, step=1.0,
-        key="aire_litros_manual",
-        help="Volumen total de aire (atrapado + incorporado) en litros/m3."
-    )
+
     
     st.sidebar.markdown("---")
     
