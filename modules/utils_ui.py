@@ -428,21 +428,21 @@ def input_aridos_ui():
                     drsss_def = drs_def * (1 + abs_def/100)
                     
                 # Cargar Granulometría usando el Mapeo
-                    from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
-                    
-                    # Crear diccionario de granulometría mapeada
-                    gran_leida = {}
-                    for col_excel, col_astm in MAPEO_COLUMNAS_EXCEL.items():
-                        # Intentar buscar la columna del excel en los datos
-                        val = datos.get(col_excel)
-                        if val is not None:
-                            gran_leida[col_astm] = safe_float(val)
-                    
-                    # Rellenar lista gran_def ordenada según TAMICES_ASTM
-                    if gran_leida:
-                        gran_def = []
-                        for tamiz in TAMICES_ASTM:
-                            gran_def.append(gran_leida.get(tamiz, 0.0))
+                from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
+                
+                # Crear diccionario de granulometría mapeada
+                gran_leida = {}
+                for col_excel, col_astm in MAPEO_COLUMNAS_EXCEL.items():
+                    # Intentar buscar la columna del excel en los datos
+                    val = datos.get(col_excel)
+                    if val is not None:
+                        gran_leida[col_astm] = safe_float(val)
+                
+                # Rellenar lista gran_def ordenada según TAMICES_ASTM
+                if gran_leida:
+                    gran_def = []
+                    for tamiz in TAMICES_ASTM:
+                        gran_def.append(gran_leida.get(tamiz, 0.0))
 
             # TRUCO: Usar key dependiente de sel_cat para resetear inputs al cambiar selección
             sufijo = f"{i}_{sel_cat}" 
