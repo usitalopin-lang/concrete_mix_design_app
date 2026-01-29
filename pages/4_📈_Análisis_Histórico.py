@@ -128,13 +128,21 @@ if sel_fd:
 
 # KPIs
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Recetas Analizadas", len(df_view))
+
+# KPI 1: Recetas con Ensayos (Solo las que tienen datos en el periodo)
+n_recetas_activas = len(df_view[df_view['n_muestras'] > 0]) if 'n_muestras' in df_view.columns else 0
+c1.metric("Recetas con Ensayos", n_recetas_activas, help="Número de recetas únicas que tienen ensayos asociados en el período seleccionado.")
+
 if 'promedio_fc' in df_view.columns:
     avg_fc = df_view['promedio_fc'].mean()
     c2.metric("Resistencia Media Global", f"{avg_fc:.1f} MPa")
     
     avg_std = df_view['desviacion_std'].mean()
     c3.metric("Desviación Std Promedio", f"{avg_std:.2f} MPa")
+
+# Ordenar df_view para que aparezcan primero las que tienen datos
+if 'n_muestras' in df_view.columns:
+    df_view = df_view.sort_values(by='n_muestras', ascending=False)
 
 # Tablas y Gráficos
 tab1, tab2 = st.tabs(["📊 Análisis Cruzado", "📋 Datos Crudos"])
