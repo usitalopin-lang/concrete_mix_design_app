@@ -29,11 +29,33 @@ def restore_session_from_cookies():
     
     # Verificar si hay sesión guardada en cookies
     if 'authenticated' in cookies and cookies['authenticated'] == 'true':
-        if 'authenticated' not in st.session_state or not st.session_state.get('authenticated'):
-            # Restaurar datos de sesión
-            st.session_state['authenticated'] = True
-            st.session_state['user_email'] = cookies.get('user_email', '')
-            st.session_state['user_name'] = cookies.get('user_name', '')
+        # Verificar expiración (60 minutos = 3600 segundos)
+        last_activity = cookies.get('last_activity', '0')
+        try:
+            last_activity_time = float(last_activity)
+            current_time = time.time()
+            session_age = current_time - last_activity_time
+            
+            # Si la sesión tiene más de 60 minutos, expirar
+            if session_age > 3600:  # 60 minutos
+                clear_session_cookies()
+                st.session_state['authenticated'] = False
+                st.warning("⏱️ Tu sesión expiró por inactividad. Por favor inicia sesión nuevamente.")
+                return
+            
+            # Sesión válida - restaurar y renovar timestamp
+            if 'authenticated' not in st.session_state or not st.session_state.get('authenticated'):
+                st.session_state['authenticated'] = True
+                st.session_state['user_email'] = cookies.get('user_email', '')
+                st.session_state['user_name'] = cookies.get('user_name', '')
+            
+            # Renovar timestamp de actividad
+            cookies['last_activity'] = str(current_time)
+            cookies.save()
+            
+        except (ValueError, TypeError):
+            # Si hay error parseando el timestamp, limpiar sesión
+            clear_session_cookies()
 
 def save_session_to_cookies(email: str, name: str):
     """Guarda la sesión en cookies."""
@@ -41,6 +63,7 @@ def save_session_to_cookies(email: str, name: str):
     cookies['authenticated'] = 'true'
     cookies['user_email'] = email
     cookies['user_name'] = name
+    cookies['last_activity'] = str(time.time())  # Timestamp inicial
     cookies.save()
 
 def clear_session_cookies():
