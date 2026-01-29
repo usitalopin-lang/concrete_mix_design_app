@@ -650,8 +650,9 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
             'densidad': densidad_cemento
         },
         'agua_cemento': {
-            'razon': round(ac_ratio, 3), 
+            'razon': round(ac_ratio, 3),
             'agua_amasado': round(agua_amasado, 1),
+            'agua_absorcion': round(agua_absorcion, 1),
             'agua_total': round(agua_total, 1)
         },
         'aire': {
