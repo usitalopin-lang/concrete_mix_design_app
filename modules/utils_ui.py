@@ -175,6 +175,7 @@ def sidebar_inputs():
         razon_ac_manual = st.number_input(
             "Razón A/C Objetivo",
             min_value=0.20, max_value=1.50,
+            value=DEFAULTS.get('razon_ac_manual', 0.43),
             step=0.01, format="%.2f",
             key="razon_ac_manual",
             help="Razón Agua/Cemento a utilizar en el diseño."
@@ -336,10 +337,14 @@ def sidebar_inputs():
                     help_dosis = f"Sugerido (Catálogo): Min: {datos_ad.get('Dosis_Min', 0)} / Max: {datos_ad.get('Dosis_Max', 0)}" if datos_ad else ""
                     
                     if modo_dosis == "L/m³":
-                        val_dosis = st.number_input(f"L/m³", min_value=0.0, max_value=50.0, value=float(dosis_def), step=0.1, key=f"d_fija_{aditivo}", help=help_dosis)
+                        max_fijo = 100.0
+                        val_ini = max(0.0, min(float(dosis_def), max_fijo))
+                        val_dosis = st.number_input(f"L/m³", min_value=0.0, max_value=max_fijo, value=val_ini, step=0.1, key=f"d_fija_{aditivo}", help=help_dosis)
                         item_ad = {'nombre': aditivo, 'dosis_fija_lt': val_dosis}
                     else:
-                        val_dosis = st.number_input(f"% Dosis", min_value=0.0, max_value=10.0, value=float(dosis_def), step=0.1, key=f"d_pct_{aditivo}", help=help_dosis)
+                        max_pct = 100.0
+                        val_ini = max(0.0, min(float(dosis_def), max_pct))
+                        val_dosis = st.number_input(f"% Dosis", min_value=0.0, max_value=max_pct, value=val_ini, step=0.1, key=f"d_pct_{aditivo}", help=help_dosis)
                         item_ad = {'nombre': aditivo, 'dosis_pct': val_dosis}
                 
                 with col_dens:
