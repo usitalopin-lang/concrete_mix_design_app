@@ -349,34 +349,48 @@ def input_aridos_ui():
             gran_def = [0.0] * 12 # Default vacío
             
             # Si se selecciona algo del catálogo, sobrescribir defaults
+            # Si se selecciona algo del catálogo, sobrescribir defaults
             if sel_cat != "Personalizado":
-                # Buscar el primero que coincida (asumiendo que si hay duplicados, tomamos el primero o cualquiera sirve)
+                # Buscar datos
                 datos = next((a for a in aridos_cat if a['Nombre'] == sel_cat), None)
                 if datos:
                     nombre_def = datos.get('Nombre', nombre_def)
                     tipo_def = datos.get('Tipo', tipo_def)
                     
-                    # Manejo seguro de valores numéricos
-                    try:
-                        drs_def = float(datos.get('Densidad_Real', drs_def))
-                        abs_def = float(datos.get('Absorcion', abs_def))
-                        # Calcular DRSSS si no viene o es 0
-                        v_drsss = datos.get('Densidad_SSS')
-                        if v_drsss:
-                            drsss_def = float(v_drsss)
-                        else:
-                            drsss_def = drs_def * (1 + abs_def/100)
-                            
-                        # Cargar Granulometría si existe (columnas tamices)
-                        tamices_cols = ['t_40mm', 't_25mm', 't_20mm', 't_12mm', 't_10mm', 
-                                        't_5mm', 't_2_5mm', 't_1_25mm', 't_0_63mm', 
-                                        't_0_315mm', 't_0_16mm', 't_0_08mm'] # Mismos que historical
-                        # Mapeo aproximado si las columnas no coinciden exactamente, pero intentemos buscar en datos
-                        # Nota: Si viene de catalogo simple, no tendrá granulo. Si viene de merge, quizás sí.
-                        # Por ahora, mantenemos la lógica de placeholder si no hay granulo explícita.
+                    def safe_float(val, default=0.0):
+                        if val is None: return default
+                        if isinstance(val, (int, float)): return float(val)
+                        try:
+                            return float(str(val).replace(',', '.'))
+                        except (ValueError, TypeError):
+                            return default
+
+                    drs_def = safe_float(datos.get('Densidad_Real'), drs_def)
+                    abs_def = safe_float(datos.get('Absorcion'), abs_def)
+                    
+                    # Calcular DRSSS si no viene
+                    v_drsss = datos.get('Densidad_SSS')
+                    if v_drsss and safe_float(v_drsss) > 0:
+                        drsss_def = safe_float(v_drsss)
+                    else:
+                        drsss_def = drs_def * (1 + abs_def/100)
                         
-                    except (ValueError, TypeError):
-                        pass
+                    # Cargar Granulometría usando el Mapeo
+                    from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
+                    
+                    # Crear diccionario de granulometría mapeada
+                    gran_leida = {}
+                    for col_excel, col_astm in MAPEO_COLUMNAS_EXCEL.items():
+                        # Intentar buscar la columna del excel en los datos
+                        val = datos.get(col_excel)
+                        if val is not None:
+                            gran_leida[col_astm] = safe_float(val)
+                    
+                    # Rellenar lista gran_def ordenada según TAMICES_ASTM
+                    if gran_leida:
+                        gran_def = []
+                        for tamiz in TAMICES_ASTM:
+                            gran_def.append(gran_leida.get(tamiz, 0.0))
 
             # TRUCO: Usar key dependiente de sel_cat para resetear inputs al cambiar selección
             sufijo = f"{i}_{sel_cat}" 
