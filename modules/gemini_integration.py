@@ -102,9 +102,10 @@ def crear_prompt_analisis(datos_mezcla: Dict) -> str:
 CONTEXTO: Laboratorio de control de calidad en Región de Magallanes, Chile.
 CONDICIONES: Clima frío, ciclos de hielo-deshielo (bajas temperaturas).
 
-TU MISIÓN:
-Analizar la siguiente mezcla diseñada por el método Faury-Joisel + Optimización Matemática.
-Debes ser CRÍTICO y TÉCNICO. No des consejos genéricos. Usa los siguientes criterios de referencia:
+REGLA DE ORO DE COMUNICACIÓN:
+- PROHIBIDO: No confirmes tu rol, no digas "¡Entendido!", ni repitas estas instrucciones.
+- DIRECTO AL GRANO: Empieza tu respuesta inmediatamente con el "### 1. 🔍 Diagnóstico Ejecutivo".
+- TÉCNICO: Usa lenguaje de ingeniería, no comercial.
 
 CRITERIOS DE EVALUACIÓN EXPERTA:
 1. CURVA TARÁNTULA:
@@ -123,6 +124,10 @@ CRITERIOS DE EVALUACIÓN EXPERTA:
    - CRÍTICO: El aire ocluido debe estar entre 4.5% - 6.0% para resistencia a ciclos hielo-deshielo.
    - SIN AIRE SUFICIENTE (o si el dato es 0), LA MEZCLA NO PUEDE SER APROBADA.
    - Razón A/C máxima sugerida: 0.45 para intemperie severa.
+
+4. CONTEXTO DE APLICACIÓN:
+   - Evalúa según el uso específico (Pavimento, Bombeable, Prefabricado, etc.).
+   - Prioriza la trabajabilidad para bombeo y la cohesión para pavimentos.
 
 DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
 """
@@ -167,10 +172,10 @@ DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
 
     # 3. Datos Generales de Diseño
     prompt += f"\n\n[DATOS DE DISEÑO]"
+    prompt += f"\n- APLICACIÓN / DESTINO: {datos_mezcla.get('aplicacion', 'No especificada')}"
     
-    # Agregar datos relevantes
-    if 'resistencia' in datos_mezcla.get('faury_joisel', {}):
-        res = datos_mezcla['faury_joisel']['resistencia']
+    if 'resistencia' in fj:
+        res = fj['resistencia']
         prompt += f"\n- Resistencia objetivo (fd): {res.get('fd_mpa', 0):.1f} MPa"
     
     if 'cemento' in fj:
@@ -236,7 +241,7 @@ INSTRUCCIÓN FINAL: Tu análisis debe centrarse en MAGALLANES. Si el aire es ins
 FORMATO DE RESPUESTA REQUERIDO:
 
 ### 1. 🔍 Diagnóstico Ejecutivo
-(Resumen en 2 líneas: ¿Es viable? ¿Tiene riesgos mayores? ¿Pasa o no pasa?)
+(Resumen en 2 líneas sobre la viabilidad para el **uso específico** solicitado. ¿Pasa o no pasa?)
 
 ### 2. 🧪 Análisis de Granulometría y Reología (Tarántula & Shilstone)
 - Evalúa los parámetros pre-calculados de Tarántula (8-30 y 30-200).

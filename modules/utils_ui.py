@@ -241,6 +241,14 @@ def sidebar_inputs():
         help="Tamaño de la partícula de árido más grande en la mezcla."
     )
 
+    from config.config import APLICACIONES_HORMIGON
+    aplicacion = st.sidebar.selectbox(
+        "Aplicación / Uso del Hormigón",
+        options=APLICACIONES_HORMIGON,
+        key="aplicacion",
+        help="Define el uso final para que la IA y el diseño sean precisos (Bombeo, Pavimentos, etc.)"
+    )
+
 
     
     st.sidebar.markdown("---")
@@ -329,6 +337,7 @@ def sidebar_inputs():
         'consistencia': consistencia,
         'asentamiento': asentamiento,
         'tmn': tmn,
+        'aplicacion': aplicacion,
         'razon_ac_manual': razon_ac_manual,
         'aire_litros_manual': aire_litros_manual,
         'tipo_cemento': tipo_cemento,
