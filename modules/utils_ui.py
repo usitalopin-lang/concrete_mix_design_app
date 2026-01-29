@@ -370,17 +370,20 @@ def input_aridos_ui():
             
             # Lógica para seleccionar MUESTRA específica si hay múltiples
             datos = None
+            sel_muestra_idx = -1 # Para hash de key
+
             if sel_cat != "Personalizado":
                 # Buscar todas las coincidencias
                 coincidencias = [a for a in aridos_cat if a['Nombre'] == sel_cat]
                 
                 if len(coincidencias) > 1:
                     # Crear etiquetas para identificar las muestras
-                    # Buscamos columnas distintivas: Identificación, Lote, Fecha, o ID
+                    # Buscamos columnas distintivas: id_muestra (N° Muestra), Identificacion, Lote, Fecha
                     opciones_muestra = []
                     for idx, c in enumerate(coincidencias):
                         # Intentar construir un label útil
                         label_parts = []
+                        if c.get('id_muestra'): label_parts.append(str(c['id_muestra'])) # Prioridad 1: N° Muestra
                         if c.get('Identificacion'): label_parts.append(str(c['Identificacion']))
                         elif c.get('Lote'): label_parts.append(str(c['Lote']))
                         
@@ -394,10 +397,11 @@ def input_aridos_ui():
                         opciones_muestra.append(label)
                     
                     sel_muestra = st.selectbox("🔖 Lote / Muestra", opciones_muestra, key=f"sel_muestra_{i}")
-                    idx_elegido = opciones_muestra.index(sel_muestra)
-                    datos = coincidencias[idx_elegido]
+                    sel_muestra_idx = opciones_muestra.index(sel_muestra)
+                    datos = coincidencias[sel_muestra_idx]
                 elif len(coincidencias) == 1:
                     datos = coincidencias[0]
+                    sel_muestra_idx = 0
             
             # Valores por defecto base
             from config.config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
@@ -430,8 +434,6 @@ def input_aridos_ui():
                 # Cargar Granulometría usando el Mapeo
                 
                 # Crear diccionario de granulometría mapeada
-                
-                # Crear diccionario de granulometría mapeada
                 gran_leida = {}
                 for col_excel, col_astm in MAPEO_COLUMNAS_EXCEL.items():
                     # Intentar buscar la columna del excel en los datos
@@ -445,8 +447,9 @@ def input_aridos_ui():
                     for tamiz in TAMICES_ASTM:
                         gran_def.append(gran_leida.get(tamiz, 0.0))
 
-            # TRUCO: Usar key dependiente de sel_cat para resetear inputs al cambiar selección
-            sufijo = f"{i}_{sel_cat}" 
+            # TRUCO: Usar key dependiente de sel_cat y sel_muestra_idx para forzar refresco
+            # Si cambiamos de muestra, el sufijo cambia, y los defaults se recargan
+            sufijo = f"{i}_{sel_cat}_{sel_muestra_idx}" 
             
             nombre = st.text_input("Nombre", nombre_def, key=f"nombre_{sufijo}")
             

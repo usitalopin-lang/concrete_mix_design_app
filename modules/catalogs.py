@@ -85,13 +85,25 @@ def obtener_aridos():
             'Densidad Real Seca-DRS (Kg/m3)': 'Densidad_Real',
             'Densidad Real SSS-DRSS (Kg/m3)': 'Densidad_SSS',
             'Absorción de Agua (%)': 'Absorcion',
-            # Si agregaste 'Nombre' al final, no necesitamos mapear, pero si quisieras usar 'Identificación de Planta' u otra:
-            # 'Identificación de Planta': 'Nombre'  <-- Solo si no agregaste la columna Nombre
+            'N° Muestra': 'id_muestra',  # Mapeo explícito de ID
+            'Identificación de Planta': 'Identificacion',
+             # Mapeo de columnas de granulometría si es necesario
+             # Las columnas de Excel (ej: '1 1/2" (40mm)') se manejan en utils_ui vía MAPEO_COLUMNAS_EXCEL
         }
         df.rename(columns=rename_map, inplace=True)
 
         # Limpiar decimales
         df = limpiar_decimales(df, ['Densidad_Real', 'Densidad_SSS', 'Absorcion'])
+
+        # --- FILTRO DE CALIDAD DE DATOS (Strict) ---
+        # Solo dejar muestras que tengan datos físicos completos
+        if 'Densidad_Real' in df.columns:
+            # Filtrar donde DRS > 0 y no es NaN
+            df = df[pd.to_numeric(df['Densidad_Real'], errors='coerce') > 0]
+            
+        if 'Absorcion' in df.columns:
+            # Filtrar donde Abs >= 0 (puede ser 0 teoricamente, pero raro, usualmente >0) y no es NaN
+            df = df[pd.to_numeric(df['Absorcion'], errors='coerce') >= 0]
 
         if not df.empty and 'Nombre' in df.columns:
              df = df[df['Activo'] == True] if 'Activo' in df.columns else df
