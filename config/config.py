@@ -62,10 +62,10 @@ DEFAULTS = {
     'desviacion': 40, 
     'desviacion_std': 40,
     'densidad_cemento': 3100, 
-    'tmn': 19.0,
+    'tmn': 25.0,
     'fraccion_defectuosa': 0.10,
-    'consistencia': 'Plástica',
-    'asentamiento': '6-9',
+    'consistencia': 'Blanda',
+    'asentamiento': '6-9 cm',
     'aire_porcentaje': 1.0
 }
 
