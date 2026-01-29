@@ -365,8 +365,39 @@ def input_aridos_ui():
     for i in range(num_aridos):
         with cols[i]:
             st.markdown(f"#### Árido {i+1}")
-            # Selectbox para elegir del catálogo
+            # Selectbox para elegir del catálogo (Nombre Familia)
             sel_cat = st.selectbox("📂 Catálogo", options=opciones_cat, key=f"cat_arido_{i}")
+            
+            # Lógica para seleccionar MUESTRA específica si hay múltiples
+            datos = None
+            if sel_cat != "Personalizado":
+                # Buscar todas las coincidencias
+                coincidencias = [a for a in aridos_cat if a['Nombre'] == sel_cat]
+                
+                if len(coincidencias) > 1:
+                    # Crear etiquetas para identificar las muestras
+                    # Buscamos columnas distintivas: Identificación, Lote, Fecha, o ID
+                    opciones_muestra = []
+                    for idx, c in enumerate(coincidencias):
+                        # Intentar construir un label útil
+                        label_parts = []
+                        if c.get('Identificacion'): label_parts.append(str(c['Identificacion']))
+                        elif c.get('Lote'): label_parts.append(str(c['Lote']))
+                        
+                        if c.get('Fecha'): label_parts.append(str(c['Fecha']))
+                        
+                        if not label_parts:
+                            label = f"Muestra #{idx+1}"
+                        else:
+                            label = " - ".join(label_parts)
+                        
+                        opciones_muestra.append(label)
+                    
+                    sel_muestra = st.selectbox("🔖 Lote / Muestra", opciones_muestra, key=f"sel_muestra_{i}")
+                    idx_elegido = opciones_muestra.index(sel_muestra)
+                    datos = coincidencias[idx_elegido]
+                elif len(coincidencias) == 1:
+                    datos = coincidencias[0]
             
             # Valores por defecto base
             nombre_def, drs_def, drsss_def, abs_def, tipo_def = "Árido", 2650.0, 2700.0, 1.0, "Grueso"
@@ -374,11 +405,8 @@ def input_aridos_ui():
             
             # Si se selecciona algo del catálogo, sobrescribir defaults
             # Si se selecciona algo del catálogo, sobrescribir defaults
-            if sel_cat != "Personalizado":
-                # Buscar datos
-                datos = next((a for a in aridos_cat if a['Nombre'] == sel_cat), None)
-                if datos:
-                    nombre_def = datos.get('Nombre', nombre_def)
+            if datos: # Ya tenemos los datos exactos (sea único o elegido)
+                nombre_def = datos.get('Nombre', nombre_def)
                     tipo_def = datos.get('Tipo', tipo_def)
                     
                     def safe_float(val, default=0.0):

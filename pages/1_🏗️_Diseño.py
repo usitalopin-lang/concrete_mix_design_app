@@ -217,7 +217,8 @@ with tab4:
     if not st.session_state.datos_completos or 'aridos' not in st.session_state.datos_completos:
         st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
     else:
-        aridos = st.session_state.datos_completos['aridos']
+        # Usar datos VIVOS del sidebar (aridos) en lugar de los guardados en el último cálculo
+        # Esto permite optimizar sin tener que calcular Faury primero si solo se quiere jugar con áridos
         grans = [a['granulometria'] for a in aridos]
         
         col_opt1, col_opt2 = st.columns([1, 2])
