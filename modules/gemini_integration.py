@@ -120,11 +120,53 @@ CRITERIOS DE EVALUACIÓN EXPERTA:
    - ZONA V (Rocosa): Wadj < 29. Muy áspera.
 
 3. DURABILIDAD (MAGALLANES):
-   - CRÍTICO: El aire ocluido debe estar entre 4.5% - 6.0% por ciclo hielo-deshielo.
-   - Razón A/C máxima sugerida: 0.45 para intemperie.
+   - CRÍTICO: El aire ocluido debe estar entre 4.5% - 6.0% para resistencia a ciclos hielo-deshielo.
+   - SIN AIRE SUFICIENTE (o si el dato es 0), LA MEZCLA NO PUEDE SER APROBADA.
+   - Razón A/C máxima sugerida: 0.45 para intemperie severa.
 
-DATOS DE LA MEZCLA A ANALIZAR:
+DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
 """
+    
+    # --- PROCESAMIENTO TÉCNICO PREVIO (MASTICADO PARA IA) ---
+    fj = datos_mezcla.get('faury_joisel', {})
+    shil = datos_mezcla.get('shilstone', {})
+    
+    # 1. Análisis de Aire (Prioridad Máxima)
+    aire_vol = fj.get('aire', {}).get('volumen', 0)
+    # También buscar en inputs directos si no está en faury
+    if aire_vol <= 0:
+        aire_vol = datos_mezcla.get('aire_litros_manual', 0)
+    
+    aire_pct = (aire_vol / 10) # Litros/1000L -> %
+    
+    prompt += f"\n[REVENTADO TÉCNICO - AIRE]"
+    prompt += f"\n- Contenido de Aire: {aire_vol:.1f} Litros/m³ ({aire_pct:.1f}%)"
+    if aire_pct < 4.5:
+        prompt += "\n  ⚠️ ALERTA: Aire por debajo del mímimo técnico (4.5%) para Magallanes."
+    elif aire_pct > 6.5:
+        prompt += "\n  ⚠️ ALERTA: Aire excesivo, posible pérdida significativa de resistencia."
+    else:
+        prompt += "\n  ✅ Aire dentro de rango normativo para climas fríos."
+
+    # 2. Análisis Granulométrico (Tarántula Masticado)
+    retenidos = fj.get('mezcla_retenido', [])
+    # Indices según TAMICES_ASTM: #8(7), #16(8), #30(9), #50(10), #100(11), #200(12)
+    tarantula_info = ""
+    if len(retenidos) >= 13:
+        sum_8_30 = sum(retenidos[7:10]) # #8, #16, #30
+        sum_30_200 = sum(retenidos[9:13]) # #30, #50, #100, #200
+        max_indiv = max(retenidos[4:]) # Desde 1/2" hacia abajo
+        
+        prompt += f"\n\n[ANÁLISIS TARÁNTULA PRE-CALCULADO]"
+        prompt += f"\n- Retenido 8-30 (Cohesión): {sum_8_30:.1f}% (Meta: >15%)"
+        prompt += f"\n- Retenido 30-200 (Finos): {sum_30_200:.1f}% (Meta: 24-34%)"
+        prompt += f"\n- Máximo Individual (Finos/Medios): {max_indiv:.1f}% (Meta: <20%)"
+        
+        cumple_taran = sum_8_30 > 15 and 24 <= sum_30_200 <= 34 and max_indiv < 20
+        prompt += f"\n- ¿Cumple Tarántula?: {'SÍ' if cumple_taran else 'NO (Requiere ajuste de arenas)'}"
+
+    # 3. Datos Generales de Diseño
+    prompt += f"\n\n[DATOS DE DISEÑO]"
     
     # Agregar datos relevantes
     if 'resistencia' in datos_mezcla.get('faury_joisel', {}):
@@ -154,12 +196,12 @@ DATOS DE LA MEZCLA A ANALIZAR:
     # Datos Shilstone
     if 'shilstone' in datos_mezcla:
         shil = datos_mezcla['shilstone']
-        prompt += f"\n\nPARÁMETROS SHILSTONE CALCULADOS:"
+        prompt += f"\n\n[PARÁMETROS SHILSTONE]"
         prompt += f"\n- Coarseness Factor (CF): {shil.get('CF', 0):.1f}"
         prompt += f"\n- Workability Factor (Wadj): {shil.get('Wadj', 0):.1f}"
         prompt += f"\n- Factor de Mortero (FM): {shil.get('FM', 0):.1f} lt/m³"
         if 'evaluacion' in shil:
-            prompt += f"\n- Clasificación Preliminar: {shil['evaluacion'].get('zona', '-')}"
+            prompt += f"\n- Clasificación Shilstone: {shil['evaluacion'].get('zona', '-')}"
 
     # Datos de Optimización (Error)
     try:
@@ -176,24 +218,26 @@ DATOS DE LA MEZCLA A ANALIZAR:
 
     prompt += """
 --------------------------------------------------------------------------------
+INSTRUCCIÓN FINAL: Tu análisis debe centrarse en MAGALLANES. Si el aire es insuficiente, sé MUY SEVERO. Si la granulometría no cumple Tarántula, indica qué arena (gruesa o fina) debe ajustarse. No menciones que eres una IA. Responde como un Consultor Senior.
+
 FORMATO DE RESPUESTA REQUERIDO:
 
 ### 1. 🔍 Diagnóstico Ejecutivo
 (Resumen en 2 líneas: ¿Es viable? ¿Tiene riesgos mayores? ¿Pasa o no pasa?)
 
-### 2. 🧪 Análisis Reológico y Trabajabilidad
-- Evalúa la posición en el Gráfico Shilstone.
-- Comenta sobre la bombeabilidad basada en el Factor de Mortero.
-- ¿Hay riesgo de segregación (CF > 75) o terminación pegajosa (CF < 45)?
+### 2. 🧪 Análisis de Granulometría y Reología (Tarántula & Shilstone)
+- Evalúa los parámetros pre-calculados de Tarántula (8-30 y 30-200).
+- Evalúa la posición en el Gráfico Shilstone y bombeabilidad (FM).
+- Justifica si se requiere ajuste de proporciones de áridos.
 
-### 3. 🛡️ Durabilidad y Resistencia
-- Evalúa la razón A/C para clima de Magallanes.
-- **Verifica el contenido de aire**: ¿Es suficiente para hielo-deshielo?
-- Comenta sobre la eficiencia del cemento.
+### 3. 🛡️ Durabilidad y Clima Frío (Magallanes)
+- **AIRE OCLUIDO**: Análisis exhaustivo. Si falta aire, indica las consecuencias (exfoliación, fisuración).
+- Evalúa la razón A/C y la dosis de cemento.
+- Recomendaciones sobre el cemento y aditivos incorporadores de aire.
 
-### 4. ⚠️ Alertas Críticas y Recomendaciones
+### 4. ⚠️ Plan de Acción y Alertas CRÍTICAS
 - Lista numerada de acciones correctivas inmediatas.
-- Si la desviación matemática es alta, sugiere cambios en la granulometría de los áridos.
+- Especificar si se requieren ensayos de control (resistencia 7/28 días, contenido de aire fresco).
 --------------------------------------------------------------------------------
 """
     return prompt
