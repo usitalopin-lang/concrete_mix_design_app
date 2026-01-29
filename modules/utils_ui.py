@@ -359,6 +359,12 @@ def sidebar_inputs():
     st.sidebar.markdown("### 💾 Local")
     nombre_archivo = st.sidebar.text_input("Nombre Archivo", value=f"Dosificacion_{datetime.now().strftime('%Y%m%d')}", key="nombre_archivo_local")
     
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🔄 Sincronizar Datos (Nube)", help="Limpia el caché y lee las hojas de Google Sheets nuevamente."):
+        st.cache_data.clear()
+        st.success("Caché limpiado. Actualizando...")
+        st.rerun()
+
     # Obtener el objeto cemento completo para metadatos
     cemento_obj = next((c for c in cementos_cat_raw if f"{c['Marca']} - {c['Tipo']}" == tipo_cemento_sel), {})
     
