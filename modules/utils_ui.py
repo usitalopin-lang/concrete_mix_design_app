@@ -254,13 +254,27 @@ def sidebar_inputs():
     # Sección: Cemento (Catálogo)
     st.sidebar.markdown("### 🏭 Cemento")
     
-    cementos_cat = catalogs.obtener_cementos()
-    opciones_cemento = [f"{c['Marca']} - {c['Tipo']}" for c in cementos_cat]
+    cementos_cat_raw = catalogs.obtener_cementos()
     
+    # Deduplicar: crear mapeo "Marca - Tipo" -> Datos del primer registro encontrado
+    cementos_dict = {}
+    for c in cementos_cat_raw:
+        label = f"{c['Marca']} - {c['Tipo']}".strip()
+        if label and label not in cementos_dict:
+            cementos_dict[label] = c
+            
+    opciones_cemento = sorted(list(cementos_dict.keys()))
+    
+    # Fallback si no hay cementos
+    if not opciones_cemento:
+        opciones_cemento = ["Default"]
+        cementos_dict = {"Default": {'Densidad': 3000.0}}
+
     def actualizar_densidad_cemento():
         if 'tipo_cemento_sel' in st.session_state:
-             idx = opciones_cemento.index(st.session_state.tipo_cemento_sel)
-             st.session_state.densidad_cemento = float(cementos_cat[idx]['Densidad'])
+             sel = st.session_state.tipo_cemento_sel
+             if sel in cementos_dict:
+                 st.session_state.densidad_cemento = float(cementos_dict[sel]['Densidad'])
 
     tipo_cemento_sel = st.sidebar.selectbox(
         "Tipo de cemento",
@@ -268,10 +282,10 @@ def sidebar_inputs():
         key="tipo_cemento_sel",
         on_change=actualizar_densidad_cemento
     )
-    tipo_cemento = tipo_cemento_sel 
     
     if 'densidad_cemento' not in st.session_state:
-        st.session_state.densidad_cemento = float(cementos_cat[0]['Densidad']) if cementos_cat else 3000.0
+        # Inicializar con la densidad del primer elemento de opciones
+        st.session_state.densidad_cemento = float(cementos_dict[opciones_cemento[0]]['Densidad'])
 
     densidad_cemento = st.sidebar.number_input(
         "Densidad del cemento (kg/m³)",
@@ -286,7 +300,8 @@ def sidebar_inputs():
     st.sidebar.markdown("### 🧪 Aditivos")
     
     aditivos_cat = catalogs.obtener_aditivos()
-    nombres_aditivos = [a['Nombre'] for a in aditivos_cat]
+    # Deduplicar nombres de aditivos
+    nombres_aditivos = sorted(list(set([str(a['Nombre']).strip() for a in aditivos_cat if a.get('Nombre')])))
     
     aditivos_seleccionados = st.sidebar.multiselect(
         "Seleccionar Aditivos",
