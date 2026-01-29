@@ -58,16 +58,16 @@ with tab1:
             with st.spinner("Calculando diseño Faury-Joisel..."):
                 # Diseño Faury-Joisel
                 resultado_faury = disenar_mezcla_faury(
-                    fc_objetivo=inputs['resistencia_fc'],
+                    resistencia_fc=inputs['resistencia_fc'],
                     desviacion_std=inputs['desviacion_std'],
-                    fraccion_defectuosa=inputs['fraccion_def'],
+                    fraccion_def=inputs['fraccion_def'],
                     consistencia=inputs['consistencia'],
                     tmn=inputs['tmn'],
                     densidad_cemento=inputs['densidad_cemento'],
                     aridos=aridos,
-                    aire_adicional=inputs['aire_porcentaje'],
+                    aire_porcentaje=inputs['aire_porcentaje'],
                     condicion_exposicion=inputs['condicion_exposicion'],
-                    aditivos=inputs['aditivos_config']
+                    aditivos_config=inputs['aditivos_config']
                 )
                 
                 # Análisis Shilstone
