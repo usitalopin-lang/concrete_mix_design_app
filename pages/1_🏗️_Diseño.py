@@ -225,123 +225,126 @@ with tab4:
         # Esto permite optimizar sin tener que calcular Faury primero si solo se quiere jugar con áridos
         grans = [a['granulometria'] for a in aridos]
         
-        col_opt1, col_opt2 = st.columns([1, 2])
+        grans = [a['granulometria'] for a in aridos]
         
-        with col_opt1:
-            # Validación de datos antes de optimizar
-            datos_validos = True
-            for i, g in enumerate(grans):
-                if sum(g) == 0:
-                    st.warning(f"⚠️ El Árido {i+1} no tiene datos granulométricos (suma=0).")
-                    datos_validos = False
-            
-            # Preparar densidades para corrección volumétrica
-            densidades_opt = []
-            for a in aridos:
-                d = a.get('Densidad_Real', 0)
-                if d <= 0: d = a.get('Densidad_SSS', 0)
-                if d <= 0: d = 2.65
-                densidades_opt.append(float(d))
+        # Validación de datos antes de optimizar
+        datos_validos = True
+        for i, g in enumerate(grans):
+            if sum(g) == 0:
+                st.warning(f"⚠️ El Árido {i+1} no tiene datos granulométricos (suma=0).")
+                datos_validos = False
+        
+        # Preparar densidades para corrección volumétrica
+        densidades_opt = []
+        for a in aridos:
+            d = a.get('Densidad_Real', 0)
+            if d <= 0: d = a.get('Densidad_SSS', 0)
+            if d <= 0: d = 2.65
+            densidades_opt.append(float(d))
 
-            # --- CONFIGURACIÓN DE PESOS (ADN DE LA MEZCLA) ---
-            st.markdown("#### 🧬 Carácter de la Mezcla (DNA)")
+        # --- CONFIGURACIÓN DE PESOS (ADN DE LA MEZCLA) ---
+        st.markdown("#### 🧬 Carácter de la Mezcla (DNA)")
+        
+        opciones_adn = list(PERFILES_ADN.keys()) + ["🗺️ Mapa de Consistencia", "⚙️ Personalizado (Manual)"]
+        estrategia = st.radio(
+            "Selecciona la Estrategia de Optimización:",
+            opciones_adn,
+            index=0,
+            horizontal=True,
+            help="Define qué criterio matemático tendrá más peso en la búsqueda del diseño óptimo."
+        )
+        
+        pesos_finales = {}
+        
+        # Espaciador
+        st.write("")
+
+        if estrategia in PERFILES_ADN:
+            config = PERFILES_ADN[estrategia]
+            st.info(f"**Estrategia {estrategia}**: {config['desc']}")
+            pesos_finales = {
+                'peso_haystack': config['haystack'],
+                'peso_tarantula': config['tarantula'],
+                'peso_shilstone': config['shilstone']
+            }
+        
+        elif estrategia == "🗺️ Mapa de Consistencia":
+            col_mat1, col_mat2, col_mat3 = st.columns([1, 1.5, 1])
+            with col_mat1:
+                st.markdown("##### 📍 Ajustes de Mapa")
+                st.caption("Mueve los controles para posicionar el 'Punto de Diseño' en la matriz.")
+                x_trab = st.slider("Trabajabilidad (Shilstone)", 0.0, 1.0, 0.5, 0.1, help="Más a la derecha = Mejor para bombeo")
+                y_coh = st.slider("Cohesión (Tarantula)", 0.0, 1.0, 0.5, 0.1, help="Más arriba = Menos segregación")
             
-            opciones_adn = list(PERFILES_ADN.keys()) + ["🗺️ Mapa de Consistencia", "⚙️ Personalizado (Manual)"]
-            estrategia = st.radio(
-                "Selecciona la Estrategia de Optimización:",
-                opciones_adn,
-                index=0,
-                horizontal=True,
-                help="Define qué criterio matemático tendrá más peso en la búsqueda del diseño óptimo."
-            )
+            with col_mat2:
+                # Gráfico 2D visual del punto
+                import plotly.graph_objects as go
+                fig_mat = go.Figure()
+                fig_mat.add_vline(x=0.5, line_width=1, line_dash="dash", line_color="gray")
+                fig_mat.add_hline(y=0.5, line_width=1, line_dash="dash", line_color="gray")
+                fig_mat.add_trace(go.Scatter(
+                    x=[x_trab], y=[y_coh], 
+                    mode='markers+text',
+                    marker=dict(size=25, color='red', symbol='cross', line=dict(width=2, color='darkred')),
+                    name="ADN Elegido"
+                ))
+                fig_mat.update_layout(
+                    xaxis=dict(title="Trabajabilidad →", range=[0, 1], showgrid=False),
+                    yaxis=dict(title="Cohesión ↑", range=[0, 1], showgrid=False),
+                    width=400, height=400, margin=dict(l=40, r=20, t=20, b=40),
+                    showlegend=False,
+                    plot_bgcolor='white'
+                )
+                st.plotly_chart(fig_mat, use_container_width=True, config={'displayModeBar': False})
             
-            pesos_finales = {}
-            
-            if estrategia in PERFILES_ADN:
-                config = PERFILES_ADN[estrategia]
-                st.caption(f"{config['icon']} **{estrategia}**: {config['desc']}")
-                pesos_finales = {
-                    'peso_haystack': config['haystack'],
-                    'peso_tarantula': config['tarantula'],
-                    'peso_shilstone': config['shilstone']
-                }
-            
-            elif estrategia == "🗺️ Mapa de Consistencia":
-                st.caption("📍 Mueve los controles para posicionar el 'Punto de Diseño' en la matriz.")
-                col_mat1, col_mat2 = st.columns([1, 1])
-                with col_mat1:
-                    x_trab = st.slider("Trabajabilidad (Shilstone)", 0.0, 1.0, 0.5, 0.1, help="Más a la derecha = Mejor para bombeo")
-                    y_coh = st.slider("Cohesión (Tarantula)", 0.0, 1.0, 0.5, 0.1, help="Más arriba = Menos segregación")
-                
-                with col_mat2:
-                    # Gráfico 2D visual del punto
-                    import plotly.graph_objects as go
-                    fig_mat = go.Figure()
-                    # Dibujar cuadrantes
-                    fig_mat.add_vline(x=0.5, line_width=1, line_dash="dash", line_color="gray")
-                    fig_mat.add_hline(y=0.5, line_width=1, line_dash="dash", line_color="gray")
-                    # El punto rojo (ADN)
-                    fig_mat.add_trace(go.Scatter(
-                        x=[x_trab], y=[y_coh], 
-                        mode='markers+text',
-                        marker=dict(size=25, color='red', symbol='cross', line=dict(width=2, color='darkred')),
-                        name="ADN Elegido"
-                    ))
-                    fig_mat.update_layout(
-                        xaxis=dict(title="Trabajabilidad →", range=[0, 1], showgrid=False),
-                        yaxis=dict(title="Cohesión ↑", range=[0, 1], showgrid=False),
-                        width=300, height=300, margin=dict(l=40, r=20, t=20, b=40),
-                        showlegend=False,
-                        plot_bgcolor='white'
-                    )
-                    st.plotly_chart(fig_mat, use_container_width=False, config={'displayModeBar': False})
-                
+            with col_mat3:
                 pesos_mat = calcular_pesos_desde_matriz(x_trab, y_coh)
-                pesos_finales = {
-                    'peso_haystack': pesos_mat['haystack'],
-                    'peso_tarantula': pesos_mat['tarantula'],
-                    'peso_shilstone': pesos_mat['shilstone']
-                }
+                st.markdown("##### ⚖️ Pesos Calculados")
+                st.code(f"Haystack: {pesos_mat['haystack']}\nTarantula: {pesos_mat['tarantula']}\nShilstone: {pesos_mat['shilstone']}\nPower 45: {pesos_mat['power45']}")
 
-            elif estrategia == "⚙️ Personalizado (Manual)":
-                st.caption("🛠️ Ajuste fino de pesos matemáticos (Modo Experto)")
-                col_m1, col_m2 = st.columns(2)
-                with col_m1:
-                    w_haystack = st.slider("Importancia Haystack", 0.0, 1.0, 0.25)
-                    w_tarantula = st.slider("Importancia Tarantula", 0.0, 1.0, 0.25)
-                with col_m2:
-                    w_shilstone = st.slider("Importancia Shilstone", 0.0, 1.0, 0.25)
-                    st.info("El peso de Power 45 se ajusta automáticamente.")
-                
-                pesos_finales = {
-                    'peso_haystack': w_haystack,
-                    'peso_tarantula': w_tarantula,
-                    'peso_shilstone': w_shilstone
-                }
+            pesos_finales = {
+                'peso_haystack': pesos_mat['haystack'],
+                'peso_tarantula': pesos_mat['tarantula'],
+                'peso_shilstone': pesos_mat['shilstone']
+            }
 
-            st.divider()
+        elif estrategia == "⚙️ Personalizado (Manual)":
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.markdown("##### 🛠️ Ajuste Manual de Pesos")
+                w_haystack = st.slider("Importancia Haystack (Norma)", 0.0, 1.0, 0.25)
+                w_tarantula = st.slider("Importancia Tarantula (Cohesión)", 0.0, 1.0, 0.25)
+            with col_m2:
+                w_shilstone = st.slider("Importancia Shilstone (Bombeabilidad)", 0.0, 1.0, 0.25)
+                st.info("💡 **Nota:** El peso de Power 45 se calcula automáticamente para completar la unidad.")
+            
+            pesos_finales = {
+                'peso_haystack': w_haystack,
+                'peso_tarantula': w_tarantula,
+                'peso_shilstone': w_shilstone
+            }
 
-            if st.button("🚀 Ejecutar Optimización de ADN", disabled=not datos_validos):
-                with st.spinner("Buscando la armonía perfecta entre áridos..."):
-                    res_opt = optimizar_agregados(
-                        grans, 
-                        tmn=st.session_state.datos_completos['tmn'],
-                        densidades=densidades_opt,
-                        **pesos_finales
-                    )
-                    if res_opt['exito']:
-                        st.session_state.res_opt = res_opt
-                        # Interpretación Experta del Error
-                        error_val = res_opt['error_total']
-                        if error_val < 500:
-                            st.success(f"✅ **Ajuste Excelente** (Desviación: {error_val:.1f})")
-                        elif error_val < 2000:
-                            st.info(f"ℹ️ **Ajuste Aceptable** (Desviación: {error_val:.1f})")
-                        else:
-                            st.warning(f"⚠️ **Ajuste Pobre** (Desviación: {error_val:.1f})")
-                            st.markdown("<small>La curva combinada está muy lejos de la ideal. Prueba agregar un tercer árido.</small>", unsafe_allow_html=True)
+        st.write("")
+        if st.button("🚀 Ejecutar Optimización de ADN", disabled=not datos_validos, use_container_width=True):
+            with st.spinner("Buscando la armonía perfecta entre áridos..."):
+                res_opt = optimizar_agregados(
+                    grans, 
+                    tmn=st.session_state.datos_completos['tmn'],
+                    densidades=densidades_opt,
+                    **pesos_finales
+                )
+                if res_opt['exito']:
+                    st.session_state.res_opt = res_opt
+                    error_val = res_opt['error_total']
+                    if error_val < 500:
+                        st.success(f"✅ **Ajuste Excelente** (Desviación: {error_val:.1f})")
+                    elif error_val < 2000:
+                        st.info(f"ℹ️ **Ajuste Aceptable** (Desviación: {error_val:.1f})")
                     else:
-                        st.error(f"❌ {res_opt.get('mensaje', 'No se pudo converger a una solución.')}")
+                        st.warning(f"⚠️ **Ajuste Pobre** (Desviación: {error_val:.1f})")
+                        st.markdown("<small>La curva combinada está muy lejos de la ideal. Prueba agregar un tercer árido.</small>", unsafe_allow_html=True)
+                else:
+                    st.error(f"❌ {res_opt.get('mensaje', 'No se pudo converger a una solución.')}")
         
         if st.session_state.res_opt:
             res = st.session_state.res_opt
