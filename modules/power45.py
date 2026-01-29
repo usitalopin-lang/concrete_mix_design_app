@@ -144,34 +144,75 @@ def calcular_retenido(pasa: List[float]) -> List[float]:
 def calcular_mezcla_granulometrica(proporciones: List[float], 
                                     granulometrias: List[List[float]]) -> List[float]:
     """
-    Calcula la granulometría de una mezcla de agregados.
-    
-    Args:
-        proporciones: Lista con proporciones de cada agregado (suman 100)
-        granulometrias: Lista de granulometrías (% que pasa) de cada agregado
-    
-    Returns:
-        Granulometría de la mezcla (% que pasa)
+    Calcula la granulometría de una mezcla de agregados (Simple / MASA).
+    Suma ponderada directa. Usar si proporciones ya son volumétricas o si no se tiene densidad.
     """
     if not proporciones or not granulometrias:
         return []
     
-    # Normalizar proporciones a fracciones
-    total_prop = sum(proporciones)
-    if total_prop > 0:
-        fracciones = [p / total_prop for p in proporciones]
-    else:
-        fracciones = [1.0 / len(proporciones)] * len(proporciones)
+    # Normalizar proporciones
+    total = sum(proporciones)
+    if total == 0: return []
+    props_norm = [p/total for p in proporciones]
     
-    # Determinar número de tamices
-    num_tamices = len(granulometrias[0]) if granulometrias else 0
+    n_tamices = len(granulometrias[0])
+    mezcla = [0.0] * n_tamices
     
-    mezcla = [0.0] * num_tamices
-    for i in range(num_tamices):
-        for j, frac in enumerate(fracciones):
+    for i in range(n_tamices):
+        for j, prop in enumerate(props_norm):
             if j < len(granulometrias) and i < len(granulometrias[j]):
-                mezcla[i] += frac * granulometrias[j][i]
+                mezcla[i] += prop * granulometrias[j][i]
+                
+    return [round(v, 2) for v in mezcla]
+
+
+def calcular_mezcla_volumetrica(proporciones_masa: List[float], 
+                                granulometrias: List[List[float]],
+                                densidades: List[float]) -> List[float]:
+    """
+    Calcula la granulometría VOLUMÉTRICA REAL corregida por densidades.
     
+    Fórmula: 
+      Vol_j = Masa_j / Densidad_j
+      Prop_Vol_j = Vol_j / Sum(Vol)
+      Mezcla_Vol = Sum(Prop_Vol_j * Granulometria_j)
+    
+    Args:
+        proporciones_masa: Lista con % en masa de cada árido
+        granulometrias: Lista de curvas (% que pasa)
+        densidades: Lista de Gravedad Específica (SG) de cada árido
+    
+    Returns:
+        Curva granulométrica combinada en base volumen.
+    """
+    if not proporciones_masa or not granulometrias or not densidades:
+        return []
+        
+    if len(proporciones_masa) != len(densidades):
+        # Fallback a cálculo simple si no coinciden dimensiones
+        return calcular_mezcla_granulometrica(proporciones_masa, granulometrias)
+
+    # 1. Convertir Proporciones Masa -> Volúmenes Relativos
+    volumenes = []
+    for m, d in zip(proporciones_masa, densidades):
+        if d <= 0: d = 2.65 # Default seguro
+        volumenes.append(m / d)
+    
+    # 2. Calcular Proporciones Volumétricas
+    total_vol = sum(volumenes)
+    if total_vol == 0: return []
+    
+    props_vol = [v / total_vol for v in volumenes]
+    
+    # 3. Combinar usando proporciones volumétricas
+    n_tamices = len(granulometrias[0])
+    mezcla = [0.0] * n_tamices
+    
+    for i in range(n_tamices):
+        for j, prop in enumerate(props_vol):
+            if j < len(granulometrias) and i < len(granulometrias[j]):
+                mezcla[i] += prop * granulometrias[j][i]
+                
     return [round(v, 2) for v in mezcla]
 
 

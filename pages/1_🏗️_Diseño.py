@@ -233,9 +233,23 @@ with tab4:
             
             st.info(f"Optimizando {len(aridos)} áridos...")
             
+            # Preparar densidades para corrección volumétrica
+            densidades_opt = []
+            for a in aridos:
+                # Buscar Densidad Real Seca (DRS) o Densidad SSS
+                # Prioridad: Densidad Real > Densidad SSS > 2.65 (Default)
+                d = a.get('Densidad_Real', 0)
+                if d <= 0: d = a.get('Densidad_SSS', 0)
+                if d <= 0: d = 2.65
+                densidades_opt.append(float(d))
+
             if st.button("🚀 Ejecutar Optimización Multi-objetivo", disabled=not datos_validos, help="Requiere datos de granulometría válidos en todos los áridos"):
-                with st.spinner("Busca la mejor combinación matemática..."):
-                    res_opt = optimizar_agregados(grans, tmn=st.session_state.datos_completos['tmn'])
+                with st.spinner("Busca la mejor combinación matemática (Volumétrica Real)..."):
+                    res_opt = optimizar_agregados(
+                        grans, 
+                        tmn=st.session_state.datos_completos['tmn'],
+                        densidades=densidades_opt
+                    )
                     if res_opt['exito']:
                         st.session_state.res_opt = res_opt
                         

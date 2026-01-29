@@ -183,6 +183,7 @@ def calcular_factores_shilstone(mezcla_pct: List[float]) -> Dict[str, float]:
 
 def funcion_objetivo(x: np.ndarray, granulometrias: List[List[float]], 
                      ideal_power45: List[float],
+                     densidades: Optional[List[float]] = None,
                      peso_haystack: float = 0.3,
                      peso_tarantula: float = 0.3,
                      peso_shilstone: float = 0.2) -> float:
@@ -195,6 +196,7 @@ def funcion_objetivo(x: np.ndarray, granulometrias: List[List[float]],
         x: Vector de proporciones [grueso%, fino%, intermedio%]
         granulometrias: Lista de granulometrías de cada agregado
         ideal_power45: Curva ideal Power 45
+        densidades: Lista de densidades (SG) para corrección volumétrica.
         peso_haystack: Peso de penalización Haystack
         peso_tarantula: Peso de penalización Tarantula
         peso_shilstone: Peso de penalización Shilstone
@@ -204,7 +206,13 @@ def funcion_objetivo(x: np.ndarray, granulometrias: List[List[float]],
     """
     # Calcular granulometría de la mezcla
     proporciones = list(x)
-    mezcla = calcular_mezcla_granulometrica(proporciones, granulometrias)
+    
+    if densidades:
+        # Si hay densidades, calculamos la curva volumétrica real
+        mezcla = calcular_mezcla_volumetrica(proporciones, granulometrias, densidades)
+    else:
+        # Cálculo simple (asumiendo input volumétrico o sin corrección)
+        mezcla = calcular_mezcla_granulometrica(proporciones, granulometrias)
     
     if not mezcla:
         return 1e10  # Valor muy alto si hay error
@@ -251,18 +259,21 @@ def optimizar_agregados(granulometrias: List[List[float]],
                         tmn: float = 25,
                         num_agregados: int = 2,
                         proporciones_iniciales: Optional[List[float]] = None,
+                        densidades: Optional[List[float]] = None,
                         peso_haystack: float = 0.3,
                         peso_tarantula: float = 0.3,
                         peso_shilstone: float = 0.2,
                         metodo: str = 'SLSQP') -> Dict:
     """
-    Optimiza las proporciones de agregados usando scipy.optimize.
+    Optimiza las proporciones de agregados (en MASA) para lograr la mejor curva ideal.
+    Si se dan densidades, optimiza la curva VOLUMÉTRICA resultante.
     
     Args:
         granulometrias: Lista de granulometrías de cada agregado (% que pasa)
         tmn: Tamaño máximo nominal en mm
         num_agregados: Número de agregados a optimizar (2 o 3)
         proporciones_iniciales: Proporciones iniciales (opcional)
+        densidades: Lista de densidades (SG) para corrección volumétrica.
         peso_haystack: Peso para penalización Haystack
         peso_tarantula: Peso para penalización Tarantula
         peso_shilstone: Peso para penalización Shilstone
