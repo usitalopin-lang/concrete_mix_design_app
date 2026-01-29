@@ -3,9 +3,14 @@ from modules.utils_ui import inicializar_estado
 from modules.auth import login_screen, logout, restore_session_from_cookies
 
 st.set_page_config(
-    page_title="Mix Design App",
-    page_icon="🏠",
-    layout="wide"
+    page_title="Sistema de Diseño de Mezclas",
+    page_icon="🏗️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://github.com/usitalopin-lang/concrete_mix_design_app',
+        'About': "# Sistema de Diseño de Mezclas de Concreto\nPlataforma avanzada para el diseño, control y optimización de mezclas de hormigón."
+    }
 )
 
 def main():
@@ -14,7 +19,23 @@ def main():
     # Restaurar sesión desde cookies si existe
     restore_session_from_cookies()
     
-    st.markdown('<h1 style="text-align: center;">🏗️ Sistema de Diseño de Mezclas</h1>', unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        .main-title {
+            text-align: center;
+            color: #1E3A8A;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .sub-title {
+            text-align: center;
+            color: #4B5563;
+            margin-bottom: 2rem;
+        }
+        </style>
+        <h1 class="main-title">🏗️ Sistema de Diseño de Mezclas</h1>
+        <p class="sub-title">Control de Calidad y Optimización de Hormigones</p>
+    """, unsafe_allow_html=True)
     
     # Gatekeeper: Login Check
     if not st.session_state.get('authenticated'):
