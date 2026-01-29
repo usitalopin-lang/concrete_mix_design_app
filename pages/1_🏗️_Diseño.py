@@ -269,78 +269,38 @@ with tab4:
             }
         
         elif estrategia == "🗺️ Mapa de Consistencia":
-            # Espaciado y layout de 3 columnas para rodear el gráfico
-            col_y, col_plot, col_res_mat = st.columns([0.4, 2, 1])
+            col_mat1, col_mat2, col_mat3 = st.columns([1, 1.5, 1])
+            with col_mat1:
+                st.markdown("##### 📍 Ajustes de Mapa")
+                st.caption("Mueve los controles para posicionar el 'Punto de Diseño' en la matriz.")
+                x_trab = st.slider("Trabajabilidad (Shilstone) ➡️", 0.0, 1.0, 0.5, 0.1, help="Más a la derecha = Mejor para bombeo")
+                y_coh = st.slider("Cohesión (Tarantula) ⬆️", 0.0, 1.0, 0.5, 0.1, help="Más arriba = Menos segregación")
             
-            # Inicializamos valores para el gráfico (evitar NameError)
-            y_coh = st.session_state.get('y_coh_matriz', 0.5)
-            x_trab = st.session_state.get('x_trab_matriz', 0.5)
-
-            with col_y:
-                # Título vertical
-                st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
-                st.markdown("<h5 style='text-align: center; margin-bottom: 0px;'>⬆️ <br>C<br>O<br>H<br>E<br>S<br>I<br>Ó<br>N</h5>", unsafe_allow_html=True)
-                
-                # CSS Hack para rotar el slider de cohesión (Y)
-                st.markdown("""
-                    <style>
-                    /* Rotamos el slider que tenga el key específico */
-                    div[data-testid="stSlider"]:has(div[aria-label="y_coh_matriz"]) {
-                        transform: rotate(-90deg);
-                        width: 300px !important;
-                        margin-top: 130px;
-                        margin-bottom: 130px;
-                        margin-left: -120px;
-                    }
-                    /* Selector alternativo por si el anterior falla en esta versión */
-                    .st-key-y_coh_matriz [data-testid="stSlider"] {
-                        transform: rotate(-90deg);
-                        width: 300px !important;
-                        margin-top: 130px;
-                        margin-bottom: 130px;
-                        margin-left: -110px;
-                    }
-                    </style>
-                """, unsafe_allow_html=True)
-                
-                y_coh = st.slider("y_coh_matriz", 0.0, 1.0, 0.5, 0.1, key="y_coh_matriz", label_visibility="collapsed")
-            
-            with col_plot:
+            with col_mat2:
                 # Gráfico 2D visual del punto
                 import plotly.graph_objects as go
                 fig_mat = go.Figure()
                 fig_mat.add_vline(x=0.5, line_width=1, line_dash="dash", line_color="gray")
                 fig_mat.add_hline(y=0.5, line_width=1, line_dash="dash", line_color="gray")
                 fig_mat.add_trace(go.Scatter(
-                    x=[x_trab], 
-                    y=[y_coh], 
+                    x=[x_trab], y=[y_coh], 
                     mode='markers+text',
                     marker=dict(size=25, color='red', symbol='cross', line=dict(width=2, color='darkred')),
                     name="ADN Elegido"
                 ))
                 fig_mat.update_layout(
-                    xaxis=dict(title="Trabajabilidad →", range=[0, 1], showgrid=False, fixedrange=True),
-                    yaxis=dict(title="Cohesión ↑", range=[0, 1], showgrid=False, fixedrange=True),
-                    height=450, margin=dict(l=40, r=20, t=20, b=40),
+                    xaxis=dict(title="Trabajabilidad →", range=[0, 1], showgrid=False),
+                    yaxis=dict(title="Cohesión ↑", range=[0, 1], showgrid=False),
+                    width=400, height=400, margin=dict(l=40, r=20, t=20, b=40),
                     showlegend=False,
-                    plot_bgcolor='#f8f9fa'
+                    plot_bgcolor='white'
                 )
                 st.plotly_chart(fig_mat, use_container_width=True, config={'displayModeBar': False})
-                
-                # Slider X justo debajo del gráfico
-                st.markdown("<p style='text-align: center; font-weight: bold; margin-bottom: 0px;'>Trabajabilidad (Shilstone) ➡️</p>", unsafe_allow_html=True)
-                x_trab = st.slider("x_trab_matriz", 0.0, 1.0, 0.5, 0.1, key="x_trab_matriz", label_visibility="collapsed")
             
-            with col_res_mat:
+            with col_mat3:
                 pesos_mat = calcular_pesos_desde_matriz(x_trab, y_coh)
                 st.markdown("##### ⚖️ Pesos Calculados")
-                st.info(f"""
-                - **Haystack**: {pesos_mat['haystack']:.3f}
-                - **Tarantula**: {pesos_mat['tarantula']:.3f}
-                - **Shilstone**: {pesos_mat['shilstone']:.3f}
-                - **Power 45**: {pesos_mat['power45']:.3f}
-                """)
-                st.caption("Los pesos se normalizan automáticamente.")
+                st.code(f"Haystack: {pesos_mat['haystack']:.3f}\nTarantula: {pesos_mat['tarantula']:.3f}\nShilstone: {pesos_mat['shilstone']:.3f}\nPower 45: {pesos_mat['power45']:.3f}")
 
             pesos_finales = {
                 'peso_haystack': pesos_mat['haystack'],
