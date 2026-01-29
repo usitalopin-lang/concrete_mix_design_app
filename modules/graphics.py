@@ -328,6 +328,116 @@ def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
     
     return fig
 
+def crear_grafico_individual_combinado(tamices_nombres: List[str],
+                                       aridos_data: List[dict],
+                                       mezcla_combinada: List[float]) -> go.Figure:
+    """
+    Gráfico 'Individual and Combined Gradations' con límites C33 (Arena).
+    
+    Args:
+        tamices_nombres: Lista de nombres de tamices
+        aridos_data: Lista de dicts con {'nombre': str, 'granulometria': list}
+        mezcla_combinada: Curva final combinada
+    """
+    fig = go.Figure()
+    
+    # 1. Límites ASTM C33 (Arena) - Según Excel usuario
+    # Tamices relevantes: 3/8, #4, #8, #16, #30, #50, #100
+    # Values: Lower=[100, 95, 80, 50, 25, 10, 2], Upper=[100, 100, 100, 85, 60, 30, 10]
+    
+    c33_limits = {
+        '3/8"': (100, 100),
+        '#4': (95, 100),
+        '#8': (80, 100),
+        '#16': (50, 85),
+        '#30': (25, 60),
+        '#50': (10, 30),
+        '#100': (2, 10),
+        '#200': (0, 0)
+    }
+    
+    y_c33_low = []
+    y_c33_up = []
+    
+    # Construir curva C33 alineada con tamices del gráfico
+    for t in tamices_nombres:
+        t_clean = t.replace('Nº', '#').strip().replace('"', '')
+        
+        # Búsqueda soft
+        found = False
+        for k, v in c33_limits.items():
+            if k.replace('"', '') == t_clean:
+                y_c33_low.append(v[0])
+                y_c33_up.append(v[1])
+                found = True
+                break
+        
+        if not found:
+            y_c33_low.append(None) # No plotear donde no hay norma
+            y_c33_up.append(None)
+
+    # Plotear C33 Envelope
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=y_c33_up,
+        mode='lines', name='C33 Upper',
+        line=dict(color='blue', width=2),
+        connectgaps=True
+    ))
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=y_c33_low,
+        mode='lines', name='C33 Lower',
+        line=dict(color='blue', width=2),
+        connectgaps=True,
+        showlegend=False
+    ))
+
+    # 2. Curvas Individuales
+    colors = ['gray', 'orange', 'brown', 'purple'] 
+    markers = ['triangle-up', 'circle-open', 'square', 'cross']
+    
+    for i, arido in enumerate(aridos_data):
+        color = 'red' if 'arena' in arido['nombre'].lower() or 'fine' in arido['nombre'].lower() else colors[i % len(colors)]
+        name_clean = arido['nombre']
+        
+        fig.add_trace(go.Scatter(
+            x=tamices_nombres, y=arido['granulometria'],
+            mode='lines+markers', name=name_clean,
+            line=dict(width=1, color=color),
+            marker=dict(symbol=markers[i % len(markers)], size=6)
+        ))
+
+    # 3. Curva Combinada
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=mezcla_combinada,
+        mode='lines+markers', name='Combined',
+        line=dict(color='magenta', width=3),
+        marker=dict(symbol='circle', size=8, color='magenta')
+    ))
+
+    fig.update_layout(
+        title=dict(text="Individual and Combined Gradations", font=dict(size=20, family="Times New Roman", color="black")),
+        xaxis=dict(
+            title="Sieve",
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True,
+            tickangle=-90,
+            title_font=dict(size=14, family="Arial Black")
+        ),
+        yaxis=dict(
+            title="Percent Passing",
+            range=[0, 100],
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True,
+            title_font=dict(size=14, family="Arial Black")
+        ),
+        template="plotly_white",
+        width=800, height=500,
+        legend=dict(
+            x=0.8, y=0.1,
+            bordercolor="black", borderwidth=1, bgcolor="white"
+        )
+    )
+    
+    return fig
+
 def crear_grafico_haystack_interactivo(tamices_nombres: List[str],
                                        retenidos_vals: List[float]) -> go.Figure:
     """

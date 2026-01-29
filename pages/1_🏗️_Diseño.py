@@ -278,8 +278,8 @@ with tab4:
             props_str = ", ".join([f"Árido {i+1}: **{p:.1f}%**" for i, p in enumerate(res['proporciones'])])
             st.markdown(f"**Proporciones Sugeridas:** {props_str}")
             
-            # Gráficos Iowa Suite
-            tab_p45, tab_tar, tab_hay, tab_shil = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone"])
+            # Gráficos Iowa Suite + C33
+            tab_p45, tab_tar, tab_hay, tab_shil, tab_c33 = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone", "C33 & Individual"])
             
             with tab_p45:
                 # Datos para P45 Optimizado
@@ -308,10 +308,31 @@ with tab4:
             
             with tab_shil:
                 sf = res['shilstone_factors']
-                # Crear evaluación 'dummy' mínima para que la función gráfica funcione
                 eval_dummy = {'zona': 'N/A', 'descripcion': 'Optimización', 'calidad': 'N/A'}
                 fig = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'], eval_dummy)
                 st.plotly_chart(fig, use_container_width=True)
+
+            with tab_c33:
+                # Preparar datos de áridos individuales
+                aridos_data_chart = []
+                for i, a in enumerate(aridos):
+                    # Nombre + Datos
+                    nombre = a.get('Nombre', f'Árido {i+1}')
+                    # Asegurar longitud
+                    g = grans[i]
+                    if len(g) < len(TAMICES_ASTM):
+                        g = g + [0]*(len(TAMICES_ASTM)-len(g))
+                    aridos_data_chart.append({'nombre': nombre, 'granulometria': g[:len(TAMICES_ASTM)]})
+                
+                # Curva combinada
+                mezcla_comb = res['mezcla_granulometria']
+                if len(mezcla_comb) < len(TAMICES_ASTM):
+                    mezcla_comb = mezcla_comb + [0]*(len(TAMICES_ASTM)-len(mezcla_comb))
+                
+                fig = crear_grafico_individual_combinado(TAMICES_ASTM, aridos_data_chart, mezcla_comb[:len(TAMICES_ASTM)])
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.info("ℹ️ **Sobre ASTM C33:** Las líneas azules muestran los límites normativos estándar para la Arena (Agregado Fino).")
 
 with tab5:
     st.markdown("### 🤖 Análisis con IA (Gemini)")
