@@ -165,7 +165,7 @@ def sidebar_inputs():
     resistencia_fc = st.sidebar.number_input(
         "Resistencia especificada fc' (MPa)",
         min_value=15.0, max_value=80.0,
-        step=1.0,
+        value=30.0, step=1.0,
         key="resistencia_fc"
     )
 
@@ -175,7 +175,7 @@ def sidebar_inputs():
         razon_ac_manual = st.number_input(
             "Razón A/C Objetivo",
             min_value=0.20, max_value=1.50,
-            value=0.50, step=0.01, format="%.2f",
+            value=0.43, step=0.01, format="%.2f",
             key="razon_ac_manual",
             help="Razón Agua/Cemento a utilizar en el diseño."
         )
@@ -183,7 +183,7 @@ def sidebar_inputs():
         aire_litros_manual = st.number_input(
             "Aire Total (Litros)",
             min_value=0.0, max_value=100.0,
-            value=10.0, step=1.0,
+            value=40.0, step=1.0,
             key="aire_litros_manual",
             help="Volumen total de aire (atrapado + incorporado) en litros/m3."
         )
@@ -198,7 +198,7 @@ def sidebar_inputs():
     desviacion_std = st.sidebar.number_input(
         "Desviación estándar s (MPa)",
         min_value=1.0, max_value=10.0,
-        step=0.5,
+        value=1.5, step=0.5,
         key="desviacion_std"
     )
     

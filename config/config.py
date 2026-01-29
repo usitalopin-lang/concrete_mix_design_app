@@ -57,16 +57,18 @@ TOLERANCIAS_BANDA = {
 }
 
 DEFAULTS = {
-    'fc': 250, 
-    'resistencia_fc': 250, 
-    'desviacion': 40, 
-    'desviacion_std': 40,
+    'fc': 30, 
+    'resistencia_fc': 30, 
+    'desviacion': 1.5, 
+    'desviacion_std': 1.5,
     'densidad_cemento': 3100, 
     'tmn': 25.0,
     'fraccion_defectuosa': 0.10,
     'consistencia': 'Blanda',
     'asentamiento': '6-9 cm',
-    'aire_porcentaje': 1.0
+    'aire_porcentaje': 1.0,
+    'razon_ac_manual': 0.43,
+    'aire_litros_manual': 40.0
 }
 
 # --- Constantes para UI (Restauradas) ---
