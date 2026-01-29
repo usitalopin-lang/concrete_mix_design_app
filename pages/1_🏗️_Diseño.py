@@ -134,13 +134,15 @@ with tab2:
         with col_a:
             st.markdown("**Materiales Cementantes**")
             st.write(f"- Cemento: **{faury['cemento']['cantidad']:.2f} kg**")
-            st.write(f"- Agua efectiva: **{faury['agua_cemento']['agua_efectiva']:.2f} L**")
+            st.write(f"- Agua de amasado: **{faury['agua_cemento']['agua_amasado']:.2f} L**")
             st.write(f"- Agua total: **{faury['agua_cemento']['agua_total']:.2f} L**")
             
         with col_b:
             st.markdown("**Agregados**")
-            for arido in faury['aridos']:
-                st.write(f"- {arido['nombre']}: **{arido['cantidad_seca']:.2f} kg**")
+            # Filtrar áridos desde cantidades_kg_m3
+            for material, cantidad in faury['cantidades_kg_m3'].items():
+                if material not in ['cemento', 'agua', 'aire', 'aditivo']:
+                     st.write(f"- {material.capitalize()}: **{cantidad:.2f} kg**")
         
         # Botón PDF
         st.markdown("---")
