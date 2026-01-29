@@ -25,10 +25,21 @@ def restore_session_from_cookies():
     """Restaura la sesión desde cookies si existe."""
     cookies = get_cookie_manager()
     
+    # Contador de intentos para evitar bucle infinito
+    if 'cookie_retries' not in st.session_state:
+        st.session_state['cookie_retries'] = 0
+    
     if not cookies.ready():
-        with st.status("🔄 Restaurando sesión de usuario...", expanded=False):
-            st.write("Conectando con el gestor de seguridad...")
+        st.session_state['cookie_retries'] += 1
+        # Si después de 5 intentos no carga, saltamos a login normal
+        if st.session_state['cookie_retries'] > 5:
+            return
+        
+        st.info("🔄 Conectando con el gestor de seguridad...")
         st.stop()
+    
+    # Si llegó aquí, los cookies están listos
+    st.session_state['cookie_retries'] = 0
     
     # Verificar si hay sesión guardada en cookies
     if 'authenticated' in cookies and cookies['authenticated'] == 'true':
