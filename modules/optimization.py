@@ -317,6 +317,10 @@ def optimizar_agregados(granulometrias: List[List[float]],
     
     # Restricción: suma = 100
     constraints = [{'type': 'eq', 'fun': restriccion_suma_100}]
+    # Ajustar densidades si existen
+    densidades_ajustadas = None
+    if densidades:
+        densidades_ajustadas = densidades[:num_agregados]
     
     # Opciones del optimizador
     options = {
@@ -330,17 +334,23 @@ def optimizar_agregados(granulometrias: List[List[float]],
         resultado = minimize(
             funcion_objetivo,
             x0,
-            args=(granulometrias_ajustadas, ideal, peso_haystack, peso_tarantula, peso_shilstone),
+            args=(granulometrias_ajustadas, ideal, densidades_ajustadas, peso_haystack, peso_tarantula, peso_shilstone),
             method=metodo,
             bounds=bounds,
             constraints=constraints,
             options=options
         )
         
-        if resultado.success or resultado.fun < funcion_objetivo(x0, granulometrias_ajustadas, ideal):
+        if resultado.success or resultado.fun < funcion_objetivo(x0, granulometrias_ajustadas, ideal, densidades_ajustadas):
             # Calcular mezcla óptima
             proporciones_optimas = list(resultado.x)
-            mezcla_optima = calcular_mezcla_granulometrica(proporciones_optimas, granulometrias_ajustadas)
+            
+            if densidades_ajustadas:
+                from .power45 import calcular_mezcla_volumetrica
+                mezcla_optima = calcular_mezcla_volumetrica(proporciones_optimas, granulometrias_ajustadas, densidades_ajustadas)
+            else:
+                mezcla_optima = calcular_mezcla_granulometrica(proporciones_optimas, granulometrias_ajustadas)
+                
             retenido_optima = calcular_retenido(mezcla_optima)
             shilstone_factors = calcular_factores_shilstone(mezcla_optima)
             

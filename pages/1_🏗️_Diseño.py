@@ -273,7 +273,7 @@ with tab4:
                             """, unsafe_allow_html=True)
                             
                     else:
-                        st.error("❌ No se pudo converger a una solución.")
+                        st.error(f"❌ {res_opt.get('mensaje', 'No se pudo converger a una solución.')}")
         
         if st.session_state.res_opt:
             res = st.session_state.res_opt
