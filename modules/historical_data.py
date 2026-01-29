@@ -378,10 +378,15 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
     # MODIFICADO: Relajar filtro. Solo validamos que tenga granulometría.
     # Si falta densidad, la ignoramos aqui y la manejamos en el promedio.
     
-    cols_obligatorias = tamices_presentes 
+    # MODIFICADO: Relajar filtro TOTALMENTE.
+    # No eliminamos filas por falta de tamices individuales (ej: Arena sin datos en 1 1/2").
+    # Confiamos en que si el usuario guardó el dato, algo útil tiene.
+    # El promedio (mean) ignorará los NaNs.
     
-    if cols_obligatorias:
-        df_filtrado.dropna(subset=cols_obligatorias, inplace=True)
+    # cols_obligatorias = tamices_presentes 
+    # if cols_obligatorias:
+    #    df_filtrado.dropna(subset=cols_obligatorias, inplace=True)
+    pass
         
     if df_filtrado.empty:
         return None
