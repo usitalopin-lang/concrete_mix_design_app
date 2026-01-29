@@ -60,6 +60,43 @@ SHILSTONE_LIMITS = {
     'fraccion_gruesa': (15, None) # Mínimo % de gruesos
 }
 
+# --- Perfiles ADN de la Mezcla ---
+# Define la configuración de pesos por defecto para cada estrategia
+PERFILES_ADN = {
+    'Equilibrado': {
+        'haystack': 0.25,
+        'tarantula': 0.25,
+        'shilstone': 0.25,
+        'power45': 0.25,
+        'desc': "Balance ideal para uso general y estructuras convencionales.",
+        'icon': "⚖️"
+    },
+    'Pavimentos': {
+        'haystack': 0.20,
+        'tarantula': 0.50,
+        'shilstone': 0.15,
+        'power45': 0.15,
+        'desc': "Prioriza la cohesión para evitar segregación durante la vibración intensa (Slipform).",
+        'icon': "🛣️"
+    },
+    'Bombeable': {
+        'haystack': 0.15,
+        'tarantula': 0.15,
+        'shilstone': 0.50,
+        'power45': 0.20,
+        'desc': "Optimiza el contenido de mortero y la fluidez para evitar atascos en tuberías.",
+        'icon': "🏢"
+    },
+    'Geométrico': {
+        'haystack': 0.10,
+        'tarantula': 0.10,
+        'shilstone': 0.20,
+        'power45': 0.60,
+        'desc': "Ajuste matemático estricto a la curva de máxima densidad (Fuller/Power 45).",
+        'icon': "📐"
+    }
+}
+
 
 def calcular_penalizacion_haystack(mezcla_pct: List[float]) -> float:
     """
@@ -580,3 +617,28 @@ def sensibilidad_proporciones(granulometrias: List[List[float]],
             })
     
     return resultados
+
+
+def calcular_pesos_desde_matriz(x_trabajabilidad: float, y_cohesion: float) -> Dict[str, float]:
+    """
+    Calcula los pesos dinámicamente a partir de una posición en la matriz 2D.
+    x_trabajabilidad: 0 (Baja) a 1 (Alta) -> Influye en Shilstone
+    y_cohesion: 0 (Baja) a 1 (Alta) -> Influye en Tarantula
+    """
+    # Pesos variables según posición
+    w_shil = x_trabajabilidad
+    w_taran = y_cohesion
+    # El ajuste geométrico es el remanente (si x e y son bajos, p45 es alto)
+    w_p45 = (1.0 - x_trabajabilidad) * 0.5 + (1.0 - y_cohesion) * 0.5
+    w_hay = 0.2  # Haystack estable por norma
+    
+    # Normalizar
+    total = w_shil + w_taran + w_p45 + w_hay
+    if total == 0: total = 1.0
+    
+    return {
+        'haystack': round(w_hay / total, 3),
+        'tarantula': round(w_taran / total, 3),
+        'shilstone': round(w_shil / total, 3),
+        'power45': round(w_p45 / total, 3)
+    }

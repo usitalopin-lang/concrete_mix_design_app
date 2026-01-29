@@ -9,7 +9,7 @@ from modules.graphics import (
     crear_grafico_nsw, crear_grafico_illinois
 )
 from modules.power45 import generar_curva_ideal_power45
-from modules.optimization import optimizar_agregados
+from modules.optimization import optimizar_agregados, PERFILES_ADN, calcular_pesos_desde_matriz
 from modules import gemini_integration as gemini
 from modules.pdf_generator import generar_reporte_pdf
 import json
@@ -235,43 +235,101 @@ with tab4:
                     st.warning(f"⚠️ El Árido {i+1} no tiene datos granulométricos (suma=0).")
                     datos_validos = False
             
-            st.info(f"Optimizando {len(aridos)} áridos...")
-            
             # Preparar densidades para corrección volumétrica
             densidades_opt = []
             for a in aridos:
-                # Buscar Densidad Real Seca (DRS) o Densidad SSS
-                # Prioridad: Densidad Real > Densidad SSS > 2.65 (Default)
                 d = a.get('Densidad_Real', 0)
                 if d <= 0: d = a.get('Densidad_SSS', 0)
                 if d <= 0: d = 2.65
                 densidades_opt.append(float(d))
 
-            if st.button("🚀 Ejecutar Optimización Multi-objetivo", disabled=not datos_validos, help="Requiere datos de granulometría válidos en todos los áridos"):
-                with st.spinner("Busca la mejor combinación matemática (Volumétrica Real)..."):
+            # --- CONFIGURACIÓN DE PESOS (ADN DE LA MEZCLA) ---
+            st.markdown("#### 🧬 Carácter de la Mezcla (DNA)")
+            
+            opciones_adn = list(PERFILES_ADN.keys()) + ["🗺️ Mapa de Consistencia", "⚙️ Personalizado (Manual)"]
+            estrategia = st.radio(
+                "Selecciona la Estrategia de Optimización:",
+                opciones_adn,
+                index=0,
+                horizontal=True,
+                help="Define qué criterio matemático tendrá más peso en la búsqueda del diseño óptimo."
+            )
+            
+            pesos_finales = {}
+            
+            if estrategia in PERFILES_ADN:
+                config = PERFILES_ADN[estrategia]
+                st.caption(f"{config['icon']} **{estrategia}**: {config['desc']}")
+                pesos_finales = {
+                    'peso_haystack': config['haystack'],
+                    'peso_tarantula': config['tarantula'],
+                    'peso_shilstone': config['shilstone']
+                }
+            
+            elif estrategia == "🗺️ Mapa de Consistencia":
+                st.caption("📍 Mueve los controles para posicionar el 'Punto de Diseño' en la matriz.")
+                col_mat1, col_mat2 = st.columns([1, 1])
+                with col_mat1:
+                    x_trab = st.slider("Trabajabilidad (Shilstone)", 0.0, 1.0, 0.5, 0.1, help="Más a la derecha = Mejor para bombeo")
+                    y_coh = st.slider("Cohesión (Tarantula)", 0.0, 1.0, 0.5, 0.1, help="Más arriba = Menos segregación")
+                
+                with col_mat2:
+                    # Gráfico 2D visual del punto
+                    import plotly.graph_objects as go
+                    fig_mat = go.Figure()
+                    fig_mat.add_trace(go.Scatter(x=[x_trab], y=[y_coh], mode='markers', marker=dict(size=20, color='red')))
+                    fig_mat.update_layout(
+                        title="Matriz de Consistencia",
+                        xaxis=dict(title="Trabajabilidad", range=[0, 1]),
+                        yaxis=dict(title="Cohesión", range=[0, 1]),
+                        width=250, height=250, margin=dict(l=20, r=20, t=40, b=20)
+                    )
+                    st.plotly_chart(fig_mat, use_container_width=False, config={'displayModeBar': False})
+                
+                pesos_mat = calcular_pesos_desde_matriz(x_trab, y_coh)
+                pesos_finales = {
+                    'peso_haystack': pesos_mat['haystack'],
+                    'peso_tarantula': pesos_mat['tarantula'],
+                    'peso_shilstone': pesos_mat['shilstone']
+                }
+
+            elif estrategia == "⚙️ Personalizado (Manual)":
+                st.caption("🛠️ Ajuste fino de pesos matemáticos (Modo Experto)")
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    w_haystack = st.slider("Importancia Haystack", 0.0, 1.0, 0.25)
+                    w_tarantula = st.slider("Importancia Tarantula", 0.0, 1.0, 0.25)
+                with col_m2:
+                    w_shilstone = st.slider("Importancia Shilstone", 0.0, 1.0, 0.25)
+                    st.info("El peso de Power 45 se ajusta automáticamente.")
+                
+                pesos_finales = {
+                    'peso_haystack': w_haystack,
+                    'peso_tarantula': w_tarantula,
+                    'peso_shilstone': w_shilstone
+                }
+
+            st.divider()
+
+            if st.button("🚀 Ejecutar Optimización de ADN", disabled=not datos_validos):
+                with st.spinner("Buscando la armonía perfecta entre áridos..."):
                     res_opt = optimizar_agregados(
                         grans, 
                         tmn=st.session_state.datos_completos['tmn'],
-                        densidades=densidades_opt
+                        densidades=densidades_opt,
+                        **pesos_finales
                     )
                     if res_opt['exito']:
                         st.session_state.res_opt = res_opt
-                        
-                        # Interpretación Experta del Error (RSS/RMSE)
+                        # Interpretación Experta del Error
                         error_val = res_opt['error_total']
-                        
                         if error_val < 500:
                             st.success(f"✅ **Ajuste Excelente** (Desviación: {error_val:.1f})")
                         elif error_val < 2000:
                             st.info(f"ℹ️ **Ajuste Aceptable** (Desviación: {error_val:.1f})")
                         else:
                             st.warning(f"⚠️ **Ajuste Pobre** (Desviación: {error_val:.1f})")
-                            st.markdown("""
-                                <small>La curva combinada está muy lejos de la ideal. 
-                                Es posible que tus áridos sean "discontinuos" (falta tamaño intermedio).
-                                **Sugerencia:** Prueba agregar un tercer árido de tamaño intermedio.</small>
-                            """, unsafe_allow_html=True)
-                            
+                            st.markdown("<small>La curva combinada está muy lejos de la ideal. Prueba agregar un tercer árido.</small>", unsafe_allow_html=True)
                     else:
                         st.error(f"❌ {res_opt.get('mensaje', 'No se pudo converger a una solución.')}")
         
