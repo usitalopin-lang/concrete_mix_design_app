@@ -26,6 +26,8 @@ def restore_session_from_cookies():
     cookies = get_cookie_manager()
     
     if not cookies.ready():
+        with st.status("🔄 Restaurando sesión de usuario...", expanded=False):
+            st.write("Conectando con el gestor de seguridad...")
         st.stop()
     
     # Verificar si hay sesión guardada en cookies
