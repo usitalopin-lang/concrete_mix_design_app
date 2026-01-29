@@ -37,13 +37,37 @@ else:
 
 # Filtros
 st.sidebar.header("🔍 Filtros")
+
+# 1. Grado
 grados = sorted(df_final['grado'].unique().tolist()) if 'grado' in df_final.columns else []
 sel_grado = st.sidebar.multiselect("Grado", grados, default=grados[:1] if grados else None)
 
+# 2. TMN
+tmns = sorted(df_final['tmn'].unique().tolist()) if 'tmn' in df_final.columns else []
+sel_tmn = st.sidebar.multiselect("TMN (mm)", tmns)
+
+# 3. Docilidad
+docilidades = sorted(df_final['docilidad'].unique().tolist()) if 'docilidad' in df_final.columns else []
+sel_docilidad = st.sidebar.multiselect("Docilidad (cm)", docilidades)
+
+# 4. Fracción Defectuosa (FD)
+fds = sorted(df_final['fraccion_defectuosa'].unique().tolist()) if 'fraccion_defectuosa' in df_final.columns else []
+sel_fd = st.sidebar.multiselect("Fracción Defectuosa (%)", fds)
+
+# Aplicar filtros
+df_view = df_final.copy()
+
 if sel_grado:
-    df_view = df_final[df_final['grado'].isin(sel_grado)]
-else:
-    df_view = df_final
+    df_view = df_view[df_view['grado'].isin(sel_grado)]
+
+if sel_tmn:
+    df_view = df_view[df_view['tmn'].isin(sel_tmn)]
+
+if sel_docilidad:
+    df_view = df_view[df_view['docilidad'].isin(sel_docilidad)]
+
+if sel_fd:
+    df_view = df_view[df_view['fraccion_defectuosa'].isin(sel_fd)]
 
 # KPIs
 c1, c2, c3, c4 = st.columns(4)
