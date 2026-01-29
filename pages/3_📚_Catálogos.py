@@ -12,7 +12,7 @@ st.set_page_config(
 inicializar_estado()
 
 if not st.session_state.get('authenticated'):
-    st.warning("⚠️ Debes iniciar sesión en la página principal.")
+    st.warning("⚠️ Debes [iniciar sesión](/) en la página principal.")
     st.stop()
 
 sidebar_user_info()

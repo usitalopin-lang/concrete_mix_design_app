@@ -9,7 +9,7 @@ st.set_page_config(page_title="Catálogo de Áridos", page_icon="📦", layout="
 inicializar_estado()
 
 if not st.session_state.get('authenticated'):
-    st.warning("⚠️ Debes iniciar sesión.")
+    st.warning("⚠️ Debes [iniciar sesión](/) en la página principal.")
     st.stop()
 
 sidebar_user_info()

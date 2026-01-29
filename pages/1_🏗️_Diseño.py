@@ -28,7 +28,7 @@ if not st.session_state.get('authenticated'):
             }
         </style>
     """, unsafe_allow_html=True)
-    st.warning("⚠️ Debes iniciar sesión en la página principal.")
+    st.warning("⚠️ Debes [iniciar sesión](/) en la página principal.")
     st.stop()
 
 # Sidebar con todos los inputs
