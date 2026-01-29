@@ -50,6 +50,16 @@ with tab1:
     st.markdown("### 🪨 Configuración de Áridos")
     aridos = input_aridos_ui()
     
+    # DEBUG TEMPORAL: Ver claves de áridos para detectar error en Tamiz #30
+    with st.expander("🛠️ DEBUG: Ver Datos Crudos de Áridos"):
+        if aridos:
+             st.write("Keys del primer árido:", aridos[0].keys())
+             st.write("Datos completos del primer árido para revisar columnas de tamices:", aridos[0])
+        from modules import catalogs
+        raw = catalogs.obtener_aridos()
+        if raw:
+             st.write("Columnas del DataFrame original (Google Sheets):", raw[0].keys())
+    
     st.markdown("---")
     
     if st.button("🔄 Calcular Diseño", type="primary", use_container_width=True):
