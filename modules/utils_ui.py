@@ -49,7 +49,7 @@ def sidebar_inputs():
         return {}
     
     # Cloud Save/Load (Común para todos)
-    with st.sidebar.expander("☁️ Nube", expanded=False):
+    with st.sidebar.expander("☁️ Guardar en Nube", expanded=False):
         if st.button("Guardar en Nube", use_container_width=True):
              if st.session_state.get('datos_completos') and st.session_state.get('user_email'):
                  if guardar_proyecto(st.session_state.datos_completos, st.session_state.user_email):
@@ -58,34 +58,7 @@ def sidebar_inputs():
                      st.toast("❌ Error al guardar")
              else:
                  st.toast("⚠️ No hay datos para guardar (calcula primero)")
-        
-        if st.session_state.get('user_email'):
-            proyectos_nube = cargar_proyectos_usuario(st.session_state.user_email)
-            if proyectos_nube:
-                st.markdown("---")
-                # Formato: timestamp - nombre
-                opciones_proy = [f"{p['timestamp']} - {p['nombre_proyecto']}" for p in proyectos_nube]
-                seleccion = st.selectbox("Cargar desde Nube", ["Seleccionar..."] + opciones_proy)
-                
-                if seleccion != "Seleccionar...":
-                     idx = opciones_proy.index(seleccion) # Asumimos orden corresponde
-                     proyecto_elegido = proyectos_nube[idx]
-                     if st.button("Cargar", key="btn_load_cloud"):
-                         try:
-                             data = json.loads(proyecto_elegido['datos_json'])
-                             # Cargar datos
-                             for key, value in data.items():
-                                if key in ['fecha']:
-                                    try:
-                                        st.session_state[key] = datetime.strptime(value, '%Y-%m-%d').date()
-                                    except:
-                                        pass
-                                else:
-                                    st.session_state[key] = value
-                             st.success("Proyecto cargado!")
-                             st.rerun()
-                         except Exception as e:
-                             st.error(f"Error al cargar: {e}")
+
 
     # --- CARGA DE PROYECTOS ---
     
