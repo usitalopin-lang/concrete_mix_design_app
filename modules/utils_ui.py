@@ -396,14 +396,27 @@ def input_aridos_ui():
                 elif tipo == "Fino": gran_def = [100, 100, 100, 100, 100, 100, 94, 74, 53, 37, 21, 8]
             
             granulometria = []
-            for row in range(2):
-                 c_gran = st.columns(6)
-                 for j in range(6):
-                     idx = row*6 + j
-                     with c_gran[j]:
-                         # Key también depende de sel_cat para actualizar granulo al cambiar árido
-                         val = st.number_input(TAMICES_ASTM[idx], 0.0, 100.0, float(gran_def[idx]), step=1.0, key=f"gran_{idx}_{sufijo}")
-                         granulometria.append(val)
+            cols_per_row = 7  # 7 columnas para que quepan 13 en 2 filas (7 y 6)
+            
+            # Asegurar que gran_def tenga la longitud correcta
+            while len(gran_def) < len(TAMICES_ASTM):
+                gran_def.append(0.0)
+
+            # Generar inputs dinámicamente
+            for i, tamiz_label in enumerate(TAMICES_ASTM):
+                if i % cols_per_row == 0:
+                    c_gran = st.columns(cols_per_row)
+                
+                with c_gran[i % cols_per_row]:
+                     val = st.number_input(
+                         tamiz_label, 
+                         min_value=0.0, 
+                         max_value=100.0, 
+                         value=float(gran_def[i]), 
+                         step=1.0, 
+                         key=f"gran_{i}_{sufijo}"
+                     )
+                     granulometria.append(val)
             
             aridos.append({'nombre': nombre, 'tipo': tipo, 'DRS': drs, 'DRSSS': drsss, 'absorcion': absorcion/100, 'granulometria': granulometria})
             
