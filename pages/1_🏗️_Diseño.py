@@ -200,7 +200,7 @@ with tab3:
             min_len = min(len(ideal_curve), len(real_curve))
             rmse = calcular_error_power45(real_curve[:min_len], ideal_curve[:min_len])
             
-            from config.config import TAMICES_ASTM 
+            from config import TAMICES_ASTM 
             # TAMICES_ASTM puede tener longitud diferente, ajustar
             nombres = TAMICES_ASTM[:min_len]
             # Calcular valores X elevados a 0.45 como espera el gráfico
