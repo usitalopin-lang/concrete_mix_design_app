@@ -385,7 +385,6 @@ def optimizar_agregados(granulometrias: List[List[float]],
             proporciones_optimas = list(resultado.x)
             
             if densidades_ajustadas:
-                from .power45 import calcular_mezcla_volumetrica
                 mezcla_optima = calcular_mezcla_volumetrica(proporciones_optimas, granulometrias_ajustadas, densidades_ajustadas)
             else:
                 mezcla_optima = calcular_mezcla_granulometrica(proporciones_optimas, granulometrias_ajustadas)
@@ -642,3 +641,32 @@ def calcular_pesos_desde_matriz(x_trabajabilidad: float, y_cohesion: float) -> D
         'shilstone': round(w_shil / total, 3),
         'power45': round(w_p45 / total, 3)
     }
+
+def calcular_mezcla_volumetrica(proporciones: List[float], granulometrias: List[List[float]], densidades: Optional[List[float]] = None) -> List[float]:
+    """
+    Calcula la curva granulométrica combinada de la mezcla. 
+    Si se entregan densidades, considera el volumen absoluto.
+    Si no, asume proporciones en peso (o que las densidades son iguales).
+    
+    Args:
+        proporciones: Lista de % de participación de cada árido (suma 100).
+        granulometrias: Lista de listas, donde cada sublista es la curva de un árido.
+        densidades: Lista de densidades (opcional).
+        
+    Returns:
+        Lista con la curva combinada (% que pasa acumulado).
+    """
+    n_aridos = len(proporciones)
+    n_tamices = len(granulometrias[0])
+    mezcla_combinada = np.zeros(n_tamices)
+    
+    # Calcular
+    for i in range(n_aridos):
+        # Aporte simple: % participacion * % que pasa el tamiz
+        # Si quisieramos ser ultra precisos con densidades distintas para volumen,
+        # primero convertiriamos proporciones de masa a volumen.
+        # Pero usualmente en optimización Iowa, se trabaja directo con la proporción de mezcla.
+        factor = proporciones[i] / 100.0
+        mezcla_combinada += np.array(granulometrias[i]) * factor
+        
+    return mezcla_combinada.tolist()
