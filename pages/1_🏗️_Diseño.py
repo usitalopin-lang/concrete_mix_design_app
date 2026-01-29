@@ -305,7 +305,13 @@ with tab5:
     if not st.session_state.datos_completos:
         st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
     else:
-        api_key = st.text_input("API Key Gemini", type="password", help="Ingresa tu API key de Google Gemini")
+        # Intentar cargar desde secrets
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        
+        if api_key:
+             st.success("🔑 API Key detectada desde configuración (Secrets)")
+        else:
+             api_key = st.text_input("API Key Gemini", type="password", help="No detectada en secrets.toml")
         
         if api_key and st.button("✨ Analizar con IA"):
             with st.spinner("Analizando con Gemini..."):
