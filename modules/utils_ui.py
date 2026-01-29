@@ -382,8 +382,8 @@ def input_aridos_ui():
     cols = st.columns(num_aridos)
     aridos_cat = catalogs.obtener_aridos()
     
-    # Filtrar duplicados y vacíos
-    nombres_unicos = sorted(list(set([a['Nombre'] for a in aridos_cat if a.get('Nombre')])))
+    # Filtrar duplicados y vacíos, asegurando que todos sean strings para el sort
+    nombres_unicos = sorted(list(set([str(a['Nombre']).strip() for a in aridos_cat if a.get('Nombre')])))
     opciones_cat = ["Personalizado"] + nombres_unicos
     
     for i in range(num_aridos):
