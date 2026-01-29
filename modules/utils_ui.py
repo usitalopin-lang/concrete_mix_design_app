@@ -87,6 +87,57 @@ def sidebar_inputs():
                          except Exception as e:
                              st.error(f"Error al cargar: {e}")
 
+    # --- CARGA DE PROYECTOS ---
+    
+    # Cargar desde Nube
+    from modules.database import cargar_proyectos_usuario
+    with st.sidebar.expander("☁️ Cargar desde Nube"):
+        # Obtener usuario actual
+        user_email = st.session_state.get('user_email')
+        if not user_email:
+             # Si no hay usuario (caso dev o error), intentar fallback o mostrar aviso
+             st.warning("Usuario no identificado.")
+        else:
+             if st.button("🔄 Refrescar Lista"):
+                  st.cache_data.clear() # Limpiar cache si usamos cache en cargar
+             
+             proyectos_nube = cargar_proyectos_usuario(user_email)
+             if not proyectos_nube:
+                  st.info("No se encontraron proyectos guardados.")
+             else:
+                  # Mapeo: "Fecha - Nombre" -> Proyecto
+                  mapa_proy = {}
+                  for p in proyectos_nube:
+                       label = f"{p['timestamp']} - {p['nombre_proyecto']}"
+                       mapa_proy[label] = p
+                  
+                  sel_proy = st.selectbox("Seleccionar Proyecto", list(mapa_proy.keys()))
+                  
+                  if st.button("📥 Cargar Seleccionado"):
+                       try:
+                           target = mapa_proy[sel_proy]
+                           data_str = target['datos_json']
+                           # Parsear si es string
+                           if isinstance(data_str, str):
+                               data = json.loads(data_str)
+                           else:
+                               data = data_str
+                               
+                           # Cargar al estado (Misma lógica que JSON local)
+                           for key, value in data.items():
+                                if key in ['fecha']:
+                                     try:
+                                         st.session_state[key] = datetime.strptime(value, '%Y-%m-%d').date()
+                                     except:
+                                         pass
+                                else:
+                                     st.session_state[key] = value
+                           
+                           st.success(f"Proyecto '{target['nombre_proyecto']}' cargado!")
+                           st.rerun()
+                       except Exception as e:
+                           st.error(f"Error al cargar proyecto nube: {e}")
+
     uploaded_file = st.sidebar.file_uploader("Cargar Local (JSON)", type=['json'])
     if uploaded_file is not None:
         try:
