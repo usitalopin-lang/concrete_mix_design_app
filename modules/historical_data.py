@@ -310,10 +310,32 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
                     't_5mm', 't_2_5mm', 't_1_25mm', 't_0_63mm', 
                     't_0_315mm', 't_0_16mm', 't_0_08mm']
     
+    # --- FILTRADO ESTRICTO DE DATOS INVALIDOS (NAN / TEXTO) ---
+    
+    # 1. Convertir columnas críticas a numérico (Coerce errors to NaN)
+    cols_claves_fisicas = ['drs', 'drsss', 'absorcion']
+    for col in cols_claves_fisicas:
+        if col in df_filtrado.columns:
+            df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce')
+
     # Convertir columnas de tamices a numérico
+    tamices_presentes = []
     for tamiz in tamices_cols:
         if tamiz in df_filtrado.columns:
             df_filtrado[tamiz] = pd.to_numeric(df_filtrado[tamiz], errors='coerce')
+            tamices_presentes.append(tamiz)
+            
+    # 2. Eliminar filas que tengan CUALQUIER dato faltante en las columnas claves
+    # (Granulometría + Densidades + Absorción)
+    cols_obligatorias = [c for c in cols_claves_fisicas if c in df_filtrado.columns] + tamices_presentes
+    
+    if cols_obligatorias:
+        df_filtrado.dropna(subset=cols_obligatorias, inplace=True)
+        
+    if df_filtrado.empty:
+        return None
+
+    # --- CALCULO DE PROMEDIOS CON DATA LIMPIA ---
     
     # Calcular granulometría promedio (solo tamices que existan)
     gran_prom = []
@@ -323,26 +345,39 @@ def obtener_arido_promedio(tipo_material, fecha_desde, fecha_hasta):
         else:
             gran_prom.append(100.0)  # Default si no existe
     
-    # Convertir columnas numéricas
-    if 'drs' in df_filtrado.columns:
-        df_filtrado['drs'] = pd.to_numeric(df_filtrado['drs'], errors='coerce')
-    if 'drsss' in df_filtrado.columns:
-        df_filtrado['drsss'] = pd.to_numeric(df_filtrado['drsss'], errors='coerce')
-    if 'absorcion' in df_filtrado.columns:
-        df_filtrado['absorcion'] = pd.to_numeric(df_filtrado['absorcion'], errors='coerce')
-    
     # Calcular promedios
     resultado = {
         'nombre': tipo_material,
         'tipo': 'Grueso' if 'CHANC' in tipo_material.upper() or 'ROD' in tipo_material.upper() else 'Fino',
         'DRS': df_filtrado['drs'].mean() if 'drs' in df_filtrado.columns else 2650.0,
         'DRSSS': df_filtrado['drsss'].mean() if 'drsss' in df_filtrado.columns else 2700.0,
-        'absorcion': df_filtrado['absorcion'].mean() / 100 if 'absorcion' in df_filtrado.columns else 0.01,
+        'absorcion': df_filtrado['absorcion'].mean() / 100.0 if 'absorcion' in df_filtrado.columns else 0.01,
         'granulometria': gran_prom,
         'n_muestras': len(df_filtrado),
         'fecha_ultimo': df_filtrado['fecha_muestreo'].max(),
         'fecha_primero': df_filtrado['fecha_muestreo'].min(),
-        'muestras_detalle': df_filtrado[['n_muestra', 'fecha_muestreo', 'drs', 'absorcion']].to_dict('records') if len(df_filtrado) <= 20 else []
+        'muestras_detalle': df_filtrado[['n_muestra', 'fecha_muestreo', 'drs', 'absorcion']].to_dict('records') if len(df_filtrado) <= 50 else []
     }
     
+    # Corrección porcentaje absorción si la media > 1 (ej. 1.5% vs 0.015)
+    # Por si en la planilla excel esta como entero (1.5) y no decimal (0.015)
+    # Asumimos que si es > 1, es porcentaje entero.
+    if resultado['absorcion'] > 1.0:
+        resultado['absorcion'] = resultado['absorcion'] / 100.0
+        
+    # Nota: En la línea de arriba ya dividimos por 100.0 (linea 339 del snippet), 
+    # pero a veces la gente pone 0.015 en excel y a veces 1.5.
+    # Si viene como 1.5 -> numeric -> 1.5 -> /100 -> 0.015 (Correcto)
+    # Si viene como 0.015 -> numeric -> 0.015 -> /100 -> 0.00015 (Muy bajo)
+    # Vamos a refinar esa lógica de absorción para ser robustos.
+    
+    val_abs_raw = df_filtrado['absorcion'].mean() if 'absorcion' in df_filtrado.columns else 1.0
+    # Heurística: Si es > 0.1 (10%), probablemente es un error o está en porcentaje (ej 1.5)
+    # Una absorción real de árido > 10% es rara (ligeros). Lo normal es 0.5% - 3%.
+    # Si el valor raw es > 1.0, asumimos porcentaje entero y dividimos por 100.
+    if val_abs_raw > 1.0:
+        resultado['absorcion'] = val_abs_raw / 100.0
+    else:
+        resultado['absorcion'] = val_abs_raw # Asumimos que ya viene decimal (ej 0.015)
+
     return resultado
