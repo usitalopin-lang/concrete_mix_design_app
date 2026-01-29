@@ -173,14 +173,25 @@ DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
         res = datos_mezcla['faury_joisel']['resistencia']
         prompt += f"\n- Resistencia objetivo (fd): {res.get('fd_mpa', 0):.1f} MPa"
     
-    if 'cemento' in datos_mezcla.get('faury_joisel', {}):
-        cem = datos_mezcla['faury_joisel']['cemento']
-        prompt += f"\n- Cemento ({datos_mezcla.get('cemento_tipo', 'General')}): {cem.get('cantidad', 0):.0f} kg/m³"
+    if 'cemento' in fj:
+        cem = fj['cemento']
+        prompt += f"\n- Cemento ({datos_mezcla.get('tipo_cemento', 'General')}): {cem.get('cantidad', 0):.0f} kg/m³"
     
-    if 'agua_cemento' in datos_mezcla.get('faury_joisel', {}):
-        ac = datos_mezcla['faury_joisel']['agua_cemento']
+    if 'agua_cemento' in fj:
+        ac = fj['agua_cemento']
         prompt += f"\n- Razón A/C: {ac.get('razon', 0):.3f}"
         prompt += f"\n- Agua libre: {ac.get('agua_total', 0):.1f} lt/m³"
+
+    # 4. Tabla Granulométrica Completa (Para que la IA no alucine)
+    prompt += f"\n\n[GRANULOMETRÍA COMBINADA COMPLETA]"
+    from config.config import TAMICES_ASTM
+    mezcla_comb = fj.get('granulometria_mezcla', [])
+    prompt += "\nTamiz | % Pasante | % Retenido"
+    prompt += "\n------|------------|-----------"
+    for i, t in enumerate(TAMICES_ASTM):
+        pas = mezcla_comb[i] if i < len(mezcla_comb) else 0.0
+        ret = retenidos[i] if i < len(retenidos) else 0.0
+        prompt += f"\n{t} | {pas:.1f}% | {ret:.1f}%"
     
     if 'compacidad' in datos_mezcla.get('faury_joisel', {}):
         prompt += f"\n- Compacidad teórica (z): {datos_mezcla['faury_joisel']['compacidad']:.4f}"
