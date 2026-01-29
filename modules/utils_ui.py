@@ -293,7 +293,7 @@ def sidebar_inputs():
 
 def input_aridos_ui():
     """Genera el formulario para ingresar datos de áridos (Catalogo + Inputs)."""
-    st.markdown("### 🪨 Configuración de Áridos")
+    """Genera el formulario para ingresar datos de áridos (Catalogo + Inputs)."""
     
     # Detectar si hay áridos pre-cargados desde el Catálogo Histórico
     aridos_precargados = st.session_state.get('aridos_precargados', [])
