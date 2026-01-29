@@ -86,88 +86,87 @@ def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict
     """
     fig = go.Figure()
 
-    # Definir Polígonos de Zonas (Coordenadas aproximadas basadas en Shilstone)
+    # Definir Polígonos de Zonas (Calibrados según Excel de Referencia)
     
-    # Zona 1 - Óptima (Verde)
+    # Zona 1 - Óptima ("Banana Shape")
+    # Límite Inferior: (100, 27) -> (85, 27) -> (15, 37) -> (0, 37)
+    # Límite Superior: (0, 45) -> (35, 45) -> (100, 36)
+    x_zona1 = [100, 85, 15, 0, 0, 35, 100, 100]
+    y_zona1 = [27, 27, 37, 37, 45, 45, 36, 27]
+    
     fig.add_trace(go.Scatter(
-        x=[100, 85, 45, 45, 75, 100],
-        y=[27, 27, 32, 45, 45, 36],
+        x=x_zona1,
+        y=y_zona1,
         fill="toself",
         mode="lines",
         line=dict(color="rgba(44, 160, 44, 0)", width=0),
         fillcolor="rgba(44, 160, 44, 0.2)",
-        name="Zona I - Óptima",
+        name="Zona I - Óptima (Excel)",
         hoverinfo="name"
     ))
 
-    # Zona 2 - Rocky (Naranja/Beige)
+    # Zona 2 - Arenosa (Bajo la zona óptima, CF < 45)
     fig.add_trace(go.Scatter(
-        x=[100, 75, 75, 100],
-        y=[36, 45, 50, 50],
+        x=[45, 0, 0, 45],
+        y=[20, 20, 37, 32], # Ajustado para conectar con la zona 1
         fill="toself",
         mode="lines",
         line=dict(color="rgba(0,0,0,0)", width=0),
         fillcolor="rgba(255, 187, 120, 0.3)",
-        name="Zona II - Rocky",
+        name="Zona II - Arenosa",
         hoverinfo="name"
     ))
 
-    # Zona 3 - Sobrediseñada (Rosa)
+    # Zona 3 - Pedregosa (Sobre la zona óptima, CF > 75) - Ajuste conceptual
     fig.add_trace(go.Scatter(
-        x=[75, 45, 45, 75],
-        y=[45, 45, 50, 50],
+        x=[75, 100, 100, 75],
+        y=[45, 36, 20, 20],
         fill="toself",
         mode="lines",
         line=dict(color="rgba(0,0,0,0)", width=0),
         fillcolor="rgba(255, 152, 150, 0.3)",
-        name="Zona III - Sobrediseñada",
+        name="Zona III - Pedregosa",
         hoverinfo="name"
     ))
 
-    # Zona 4 - Arenosa (Azul claro)
+    # Zona IV - Indeseable (Wadj > 45)
     fig.add_trace(go.Scatter(
-        x=[45, 0, 0, 45],
-        y=[32, 37, 50, 50],
+        x=[0, 100, 100, 0],
+        y=[45, 45, 50, 50],
         fill="toself",
         mode="lines",
         line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(174, 199, 232, 0.3)",
-        name="Zona IV - Arenosa",
+        fillcolor="rgba(214, 39, 40, 0.1)",
+        name="Zona IV - Exceso Finos",
         hoverinfo="name"
     ))
     
-    # Zona 5 - Baja Trabajabilidad (Gris/Violeta) - Fondo
-    # Se dibuja implícitamente o como resto, pero podemos agregar un polígono grande abajo
-    fig.add_trace(go.Scatter(
-        x=[100, 85, 45, 0, 0, 100],
-        y=[20, 27, 32, 37, 20, 20],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(197, 176, 213, 0.3)",
-        name="Zona V - Baja Trabajabilidad",
-        hoverinfo="name"
-    ))
-
     # Líneas de contorno Zona I (para que resalte)
     fig.add_trace(go.Scatter(
-        x=[100, 75, 45, 45, 85, 100],
-        y=[36, 45, 45, 32, 27, 27],
+        x=x_zona1,
+        y=y_zona1,
         mode="lines",
-        line=dict(color="green", width=2),
+        line=dict(color="green", width=2, dash='solid'),
         showlegend=False,
         hoverinfo="skip"
     ))
 
     # Punto de la Mezcla Actual
-    color_punto = 'green' if evaluacion.get('calidad') == 'Óptima' else ('orange' if evaluacion.get('calidad') == 'Aceptable' else 'red')
+    color_punto = 'black'
+    # Validar si está dentro aproximadamente
+    dentro_cf = (15 <= CF <= 100)
+    dentro_w = (27 <= Wadj <= 45)
+    if dentro_cf and dentro_w:
+        color_punto = 'green'
+    else:
+        color_punto = 'red'
     
     fig.add_trace(go.Scatter(
         x=[CF],
         y=[Wadj],
         mode='markers+text',
-        marker=dict(size=14, color=color_punto, line=dict(width=2, color='black')),
-        text=[f"<b>TU MEZCLA</b><br>CF: {CF}<br>Wadj: {Wadj}"],
+        marker=dict(size=14, color=color_punto, line=dict(width=2, color='white')),
+        text=[f"<b>TU MEZCLA</b><br>CF: {CF:.1f}<br>Wadj: {Wadj:.1f}"],
         textposition="top center",
         name='Tu Mezcla',
         hovertemplate="<b>%{text}</b><extra></extra>"
@@ -175,7 +174,7 @@ def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict
 
     # Configuración del Layout
     fig.update_layout(
-        title=dict(text="Análisis de Trabajabilidad (Shilstone)", font=dict(size=20)),
+        title=dict(text="Análisis de Trabajabilidad (Shilstone - Calibrado)", font=dict(size=20)),
         xaxis=dict(
             title="Coarseness Factor (CF)",
             range=[0, 100],
@@ -198,13 +197,19 @@ def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict
             xanchor="right",
             x=1
         ),
-        hovermode="closest"
+        hovermode="closest",
+        shapes=[
+            # Línea divisoria CF=45
+            dict(type="line", x0=45, y0=20, x1=45, y1=50, line=dict(color="gray", dash="dot", width=1)),
+            # Línea divisoria CF=75
+            dict(type="line", x0=75, y0=20, x1=75, y1=50, line=dict(color="gray", dash="dot", width=1))
+        ]
     )
     
-    # Anotaciones de Texto para las Zonas
-    fig.add_annotation(x=60, y=38, text="ZONA I (ÓPTIMA)", showarrow=False, font=dict(color="green", size=12, weight="bold"))
-    fig.add_annotation(x=90, y=42, text="Rocky", showarrow=False, font=dict(color="gray", size=10))
-    fig.add_annotation(x=20, y=42, text="Arenosa", showarrow=False, font=dict(color="gray", size=10))
+    # Anotaciones
+    fig.add_annotation(x=55, y=32, text="<b>ZONA I</b><br>(Óptima)", showarrow=False, font=dict(color="green", size=13))
+    fig.add_annotation(x=25, y=25, text="Arenosa", showarrow=False, font=dict(color="gray", size=11))
+    fig.add_annotation(x=90, y=25, text="Pedregosa", showarrow=False, font=dict(color="gray", size=11))
     
     return fig
 
@@ -267,7 +272,7 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
 
     # Layout
     fig.update_layout(
-        title=dict(text=f"Curva de Gradación Power 45 (RMSE: {rmse:.2f})", font=dict(size=20)),
+        title=dict(text=f"Curva de Gradación Power 45 (Desviación: {rmse:.2f})", font=dict(size=20)),
         xaxis=dict(
             title="Tamaño de Tamiz (Escala Power 0.45)",
             tickmode='array',
@@ -291,41 +296,90 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
 
 def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
                                         retenidos_vals: List[float],
-                                        tmn: float) -> go.Figure:
+                                        tmn: float = 25.0) -> go.Figure:
     """
-    Crea gráfico de Curva Tarántula (% Retenido Individual).
+    Crea gráfico de Curva Tarántula / Haystack calibrado con límites del Excel.
+    Muestra el % Pasante Acumulado vs Límites de la Banda.
+    
+    Nota: Recibe 'retenidos_vals' (individuales) pero DEBE convertir a Pasante para usar
+    los límites del Excel (95-100, 75-90, etc). OJO: El Excel usa Pasante para Haystack Limits.
     """
     fig = go.Figure()
     
-    # Límites aproximados Tarantula (simplificado para ejemplo, idealmente parametrizar según tmn)
-    # Límite superior genérico (ejemplo: 20% para gruesos, 15% finos)
-    limite_sup = [22] * len(tamices_nombres)
-    limite_inf = [4] * len(tamices_nombres)
+    # CONVERTIR RETENIDO INDIVIDUAL A PASANTE ACUMULADO
+    # Asumimos que retenidos_vals suma 100 (o aprox)
+    # Pasante[i] = 100 - (Acumulado Retenido hasta i)
+    # Pero retenidos_vals suele venir ordenado de mayor a menor tamiz?
+    # Vamos a recalcular pasante desde 0 (si es retenido individual)
+    # Pasante N = 100 - sum(ret[0]...ret[N])
     
-    # Área Aceptable (Fondo)
+    acumulados = []
+    curr = 0
+    for val in retenidos_vals:
+        curr += val
+        acumulados.append(curr)
+        
+    pasante_vals = [max(0, 100 - x) for x in acumulados]
+    
+    # LÍMITES CALIBRADOS DEL EXCEL (Haystack Limits)
+    # Mapeo por nombre de tamiz (aprox)
+    limites_excel = {
+        '2"': (100, 100), '50mm': (100, 100),
+        '1 1/2"': (100, 100), '37.5mm': (100, 100),
+        '1"': (100, 100), '25mm': (100, 100),
+        '3/4"': (95, 100), '19mm': (95, 100),
+        '1/2"': (75, 90), '12.5mm': (75, 90),
+        '3/8"': (55, 75), '9.5mm': (55, 75),
+        '#4': (38, 50), '4.75mm': (38, 50),
+        '#8': (30, 42), '2.36mm': (30, 42),
+        '#16': (22, 34), '1.18mm': (22, 34),
+        '#30': (16, 30), '0.6mm': (16, 30),
+        '#50': (5, 15), '0.3mm': (5, 15),
+        '#100': (0, 7), '0.15mm': (0, 7),
+        '#200': (0, 4), '0.075mm': (0, 4)
+    }
+    
+    # Construir vectores de límites alineados con tamices_nombres
+    lim_sup = []
+    lim_inf = []
+    labels_clean = []
+    
+    for t in tamices_nombres:
+        # Limpieza simple de etiqueta para matchear
+        key = t.replace('Nº', '#').strip()
+        if key in limites_excel:
+            inf, sup = limites_excel[key]
+            lim_inf.append(inf)
+            lim_sup.append(sup)
+        else:
+            # Default amplio si no matchea
+            lim_inf.append(0)
+            lim_sup.append(100)
+    
+    # Área Aceptable (Túnel Tarántula)
     fig.add_trace(go.Scatter(
         x=tamices_nombres + tamices_nombres[::-1],
-        y=limite_sup + limite_inf[::-1],
+        y=lim_sup + lim_inf[::-1],
         fill='toself',
-        fillcolor='rgba(200, 200, 200, 0.2)',
-        line=dict(color='rgba(0,0,0,0)'),
-        name='Rango Aceptable',
+        fillcolor='rgba(200, 200, 200, 0.4)',
+        line=dict(color='rgba(100,100,100,0.2)'),
+        name='Banda Tarántula (Excel)',
         hoverinfo="skip"
     ))
     
     fig.add_trace(go.Scatter(
         x=tamices_nombres,
-        y=retenidos_vals,
+        y=pasante_vals,
         mode='lines+markers',
-        name='Tu Mezcla (% Retenido)',
+        name='Tu Mezcla (% Pasante)',
         line=dict(color=COLOR_PRIMARIO, width=3),
-        marker=dict(size=8)
+        marker=dict(size=8, symbol='diamond')
     ))
 
     fig.update_layout(
-        title=dict(text="Curva Tarántula (% Retenido Individual)", font=dict(size=20)),
+        title=dict(text="Curva Tarántula (% Pasante Acumulado)", font=dict(size=20)),
         xaxis=dict(title="Tamiz"),
-        yaxis=dict(title="% Retenido Individual", range=[0, 30]),
+        yaxis=dict(title="% Que Pasa", range=[0, 105]),
         template="plotly_white",
         hovermode="x unified"
     )
