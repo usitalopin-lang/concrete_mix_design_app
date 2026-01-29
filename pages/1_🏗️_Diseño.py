@@ -233,7 +233,7 @@ with tab4:
                     else:
                         st.error("❌ Falló la optimización")
         
-        if 'res_opt' in st.session_state:
+        if st.session_state.res_opt:
             res = st.session_state.res_opt
             st.markdown(f"**Proporciones Sugeridas:** {res['proporciones']}")
             
@@ -241,9 +241,18 @@ with tab4:
             tab_p45, tab_tar, tab_hay, tab_shil = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone"])
             
             with tab_p45:
+                # Datos para P45 Optimizado
+                from modules.power45 import TAMICES_POWER45, calcular_error_power45
+                tamices_astm_nombres = TAMICES_ASTM[:len(res['curva_ideal'])]
+                x_vals_opt = [t**0.45 for t in TAMICES_POWER45[:len(res['curva_ideal'])]]
+                rmse_opt = calcular_error_power45(res['mezcla_granulometria'], res['curva_ideal'])
+
                 fig = crear_grafico_power45_interactivo(
-                    TAMICES_ASTM, TAMICES_MM, 
-                    res['mezcla_granulometria'], res['curva_ideal']
+                    tamices_nombres=tamices_astm_nombres,
+                    tamices_power=x_vals_opt,
+                    ideal_vals=res['curva_ideal'],
+                    real_vals=res['mezcla_granulometria'],
+                    rmse=rmse_opt
                 )
                 st.plotly_chart(fig, use_container_width=True)
             
