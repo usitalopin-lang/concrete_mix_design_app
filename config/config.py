@@ -56,7 +56,7 @@ TOLERANCIAS_BANDA = {
     '#4': 4, '#8': 4, '#16': 4, '#30': 4, '#50': 3, '#100': 2, '#200': 3
 }
 
-DEFAULTS = {'fc': 250, 'desviacion': 40, 'densidad_cemento': 3100, 'tmn': 19.0}
+DEFAULTS = {'fc': 250, 'resistencia_fc': 250, 'desviacion': 40, 'densidad_cemento': 3100, 'tmn': 19.0}
 
 # --- Constantes para UI (Restauradas) ---
 CONSISTENCIAS = {
