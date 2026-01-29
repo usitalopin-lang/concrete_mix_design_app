@@ -86,130 +86,84 @@ def crear_grafico_shilstone_interactivo(CF: float, Wadj: float, evaluacion: Dict
     """
     fig = go.Figure()
 
-    # Definir Polígonos de Zonas (Calibrados según Excel de Referencia)
+    # --- ESTILO TÉCNICO IDÉNTICO AL EXCEL ---
     
-    # Zona 1 - Óptima ("Banana Shape")
-    # Límite Inferior: (100, 27) -> (85, 27) -> (15, 37) -> (0, 37)
-    # Límite Superior: (0, 45) -> (35, 45) -> (100, 36)
-    x_zona1 = [100, 85, 15, 0, 0, 35, 100, 100]
-    y_zona1 = [27, 27, 37, 37, 45, 45, 36, 27]
-    
+    # 1. LÍMITES ZONA I (Banana) - Líneas Negras Gruesas
+    # Superior
     fig.add_trace(go.Scatter(
-        x=x_zona1,
-        y=y_zona1,
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(44, 160, 44, 0)", width=0),
-        fillcolor="rgba(44, 160, 44, 0.2)",
-        name="Zona I - Óptima (Excel)",
-        hoverinfo="name"
+        x=[0, 35, 100], y=[45, 45, 36],
+        mode="lines", line=dict(color="black", width=3), showlegend=False, hoverinfo="skip"
     ))
-
-    # Zona 2 - Arenosa (Bajo la zona óptima, CF < 45)
+    # Inferior
     fig.add_trace(go.Scatter(
-        x=[45, 0, 0, 45],
-        y=[20, 20, 37, 32], # Ajustado para conectar con la zona 1
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(255, 187, 120, 0.3)",
-        name="Zona II - Arenosa",
-        hoverinfo="name"
-    ))
-
-    # Zona 3 - Pedregosa (Sobre la zona óptima, CF > 75) - Ajuste conceptual
-    fig.add_trace(go.Scatter(
-        x=[75, 100, 100, 75],
-        y=[45, 36, 20, 20],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(255, 152, 150, 0.3)",
-        name="Zona III - Pedregosa",
-        hoverinfo="name"
-    ))
-
-    # Zona IV - Indeseable (Wadj > 45)
-    fig.add_trace(go.Scatter(
-        x=[0, 100, 100, 0],
-        y=[45, 45, 50, 50],
-        fill="toself",
-        mode="lines",
-        line=dict(color="rgba(0,0,0,0)", width=0),
-        fillcolor="rgba(214, 39, 40, 0.1)",
-        name="Zona IV - Exceso Finos",
-        hoverinfo="name"
+        x=[0, 15, 85, 100], y=[37, 37, 27, 27],
+        mode="lines", line=dict(color="black", width=3), showlegend=False, hoverinfo="skip"
     ))
     
-    # Líneas de contorno Zona I (para que resalte)
+    # 2. LÍNEAS DIVISORIAS INTERNAS
+    # Línea divisoria Zona II (Vertical en CF=75 no, es diagonal? No, Excel muestra vertical en CF=45 y 75 aprox)
+    # En el Excel se ve:
+    # - Una linea vertical separando I de II (parece estar en CF=~45)
+    # - Una linea vertical separando II de III (en CF=~75)
+    
     fig.add_trace(go.Scatter(
-        x=x_zona1,
-        y=y_zona1,
-        mode="lines",
-        line=dict(color="green", width=2, dash='solid'),
-        showlegend=False,
-        hoverinfo="skip"
+        x=[45, 45], y=[32, 45], # Vertical I vs II/IV
+        mode="lines", line=dict(color="black", width=2), showlegend=False, hoverinfo="skip"
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=[75, 75], y=[27, 45], # Vertical II vs III
+        mode="lines", line=dict(color="black", width=2), showlegend=False, hoverinfo="skip"
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[0, 100], y=[27, 27], # Base Zona V
+        mode="lines", line=dict(color="black", width=2), showlegend=False, hoverinfo="skip"
     ))
 
     # Punto de la Mezcla Actual
-    color_punto = 'black'
-    # Validar si está dentro aproximadamente
-    dentro_cf = (15 <= CF <= 100)
-    dentro_w = (27 <= Wadj <= 45)
-    if dentro_cf and dentro_w:
-        color_punto = 'green'
-    else:
-        color_punto = 'red'
-    
     fig.add_trace(go.Scatter(
-        x=[CF],
-        y=[Wadj],
-        mode='markers+text',
-        marker=dict(size=14, color=color_punto, line=dict(width=2, color='white')),
-        text=[f"<b>TU MEZCLA</b><br>CF: {CF:.1f}<br>Wadj: {Wadj:.1f}"],
-        textposition="top center",
+        x=[CF], y=[Wadj],
+        mode='markers',
+        marker=dict(size=14, color='red', line=dict(width=1, color='black')),
         name='Tu Mezcla',
+        text=[f"CF: {CF:.1f}, Wadj: {Wadj:.1f}"],
         hovertemplate="<b>%{text}</b><extra></extra>"
     ))
 
-    # Configuración del Layout
+    # Configuración del Layout TÉCNICO
     fig.update_layout(
-        title=dict(text="Análisis de Trabajabilidad (Shilstone - Calibrado)", font=dict(size=20)),
+        title=dict(text="Shilstone Chart", font=dict(size=24, color="black", family="Times New Roman")),
         xaxis=dict(
-            title="Coarseness Factor (CF)",
-            range=[0, 100],
-            gridcolor=COLOR_GRILLA,
-            zeroline=False
+            title="Coarseness Factor",
+            range=[100, 0], # INVERTIDO como en el Excel (100 a la izquierda)
+            dtick=20,
+            gridcolor='black',
+            gridwidth=1,
+            zeroline=False,
+            showline=True, linecolor='black', linewidth=2, mirror=True
         ),
         yaxis=dict(
-            title="Workability Factor (W-adj)",
-            range=[20, 50],
-            gridcolor=COLOR_GRILLA,
-            zeroline=False
+            title="Workability Factor",
+            range=[20, 45],
+            dtick=5,
+            gridcolor='black',
+            gridwidth=1,
+            zeroline=False,
+            showline=True, linecolor='black', linewidth=2, mirror=True
         ),
         template="plotly_white",
-        width=800,
-        height=600,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
-        hovermode="closest",
-        shapes=[
-            # Línea divisoria CF=45
-            dict(type="line", x0=45, y0=20, x1=45, y1=50, line=dict(color="gray", dash="dot", width=1)),
-            # Línea divisoria CF=75
-            dict(type="line", x0=75, y0=20, x1=75, y1=50, line=dict(color="gray", dash="dot", width=1))
-        ]
+        width=700,
+        height=500,
+        showlegend=False
     )
     
-    # Anotaciones
-    fig.add_annotation(x=55, y=32, text="<b>ZONA I</b><br>(Óptima)", showarrow=False, font=dict(color="green", size=13))
-    fig.add_annotation(x=25, y=25, text="Arenosa", showarrow=False, font=dict(color="gray", size=11))
-    fig.add_annotation(x=90, y=25, text="Pedregosa", showarrow=False, font=dict(color="gray", size=11))
+    # Textos Grandes de Zonas
+    fig.add_annotation(x=90, y=28, text="I<br>Gap", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
+    fig.add_annotation(x=60, y=41, text="II", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
+    fig.add_annotation(x=15, y=42, text="III<br>Small Agg", showarrow=False, font=dict(size=14, color="black", family="Arial Black"))
+    fig.add_annotation(x=90, y=42, text="IV<br>Sandy", showarrow=False, font=dict(size=14, color="black", family="Arial Black"))
+    fig.add_annotation(x=35, y=24, text="V<br>Coarse", showarrow=False, font=dict(size=16, color="black", family="Arial Black"))
     
     return fig
 
@@ -219,77 +173,56 @@ def crear_grafico_power45_interactivo(tamices_nombres: List[str],
                                       ideal_vals: List[float], 
                                       real_vals: List[float],
                                       rmse: float) -> go.Figure:
-    """
-    Crea un gráfico interactivo Power 45.
-    
-    Args:
-        tamices_nombres: Etiquetas de los tamices (ej: '1"', '#4')
-        tamices_power: Valores X (tamiz^0.45)
-        ideal_vals: Valores Y curva ideal
-        real_vals: Valores Y curva real
-        rmse: Error RMSE calculado
-    
-    Returns:
-        Objeto go.Figure
-    """
     fig = go.Figure()
 
-    # Curva Ideal
+    # Curva Ideal (Verde en Excel)
     fig.add_trace(go.Scatter(
-        x=tamices_power,
-        y=ideal_vals,
-        mode='lines+markers',
-        name='Curva Ideal (Power 45)',
-        line=dict(color=COLOR_PRIMARIO, width=3, dash='dash'),
-        marker=dict(size=6, symbol='square'),
-        hovertemplate='<b>Ideal</b><br>Tamiz: %{customdata}<br>% Pasa: %{y:.1f}%<extra></extra>',
-        customdata=tamices_nombres
+        x=tamices_power, y=ideal_vals,
+        mode='lines', name='Max Density',
+        line=dict(color='green', width=3),
+        hovertemplate='Ideal: %{y:.1f}%<extra></extra>'
     ))
 
-    # Curva Real
+    # Límites +- (Rojos en Excel) - Aproximación visual
+    # Suelen ser +-5% aprox
     fig.add_trace(go.Scatter(
-        x=tamices_power,
-        y=real_vals,
-        mode='lines+markers',
-        name='Tu Mezcla',
-        line=dict(color=COLOR_SECUNDARIO, width=4),
-        marker=dict(size=8, symbol='circle'),
-        hovertemplate='<b>Real</b><br>Tamiz: %{customdata}<br>% Pasa: %{y:.1f}%<extra></extra>',
-        customdata=tamices_nombres
+        x=tamices_power, y=[min(100, v+5) for v in ideal_vals],
+        mode='lines', line=dict(color='red', width=1, dash='solid'),
+        name='Limits', hoverinfo='skip'
     ))
-    
-    # Relleno de diferencia
     fig.add_trace(go.Scatter(
-        x=tamices_power + tamices_power[::-1],
-        y=ideal_vals + real_vals[::-1],
-        fill='toself',
-        fillcolor='rgba(255, 127, 14, 0.2)',
-        line=dict(color='rgba(255,255,255,0)'),
-        hoverinfo="skip",
-        showlegend=True,
-        name='Desviación'
+        x=tamices_power, y=[max(0, v-5) for v in ideal_vals],
+        mode='lines', line=dict(color='red', width=1, dash='solid'),
+        showlegend=False, hoverinfo='skip'
     ))
 
-    # Layout
+    # Curva Real (Azul con X)
+    fig.add_trace(go.Scatter(
+        x=tamices_power, y=real_vals,
+        mode='lines+markers', name='Mixture',
+        line=dict(color='blue', width=3),
+        marker=dict(symbol='x', size=8, color='blue'),
+        hovertemplate='Real: %{y:.1f}%<extra></extra>'
+    ))
+
     fig.update_layout(
-        title=dict(text=f"Curva de Gradación Power 45 (Desviación: {rmse:.2f})", font=dict(size=20)),
+        title=dict(text="Power 45", font=dict(size=20, family="Times New Roman")),
         xaxis=dict(
-            title="Tamaño de Tamiz (Escala Power 0.45)",
-            tickmode='array',
-            tickvals=tamices_power,
-            ticktext=tamices_nombres,
-            gridcolor=COLOR_GRILLA
+            title="Sieve (^0.45)",
+            tickmode='array', tickvals=tamices_power, ticktext=tamices_nombres,
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True
         ),
         yaxis=dict(
-            title="% Que Pasa",
-            range=[0, 105],
-            gridcolor=COLOR_GRILLA
+            title="% Passing",
+            range=[0, 100],
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True
         ),
         template="plotly_white",
-        width=900,
-        height=550,
-        legend=dict(x=0.02, y=0.98),
-        hovermode="x unified"
+        width=800, height=500,
+        legend=dict(
+            x=0.7, y=0.1,
+            bordercolor="black", borderwidth=1, bgcolor="white"
+        )
     )
 
     return fig
@@ -298,90 +231,70 @@ def crear_grafico_tarantula_interactivo(tamices_nombres: List[str],
                                         retenidos_vals: List[float],
                                         tmn: float = 25.0) -> go.Figure:
     """
-    Crea gráfico de Curva Tarántula / Haystack calibrado con límites del Excel.
-    Muestra el % Pasante Acumulado vs Límites de la Banda.
-    
-    Nota: Recibe 'retenidos_vals' (individuales) pero DEBE convertir a Pasante para usar
-    los límites del Excel (95-100, 75-90, etc). OJO: El Excel usa Pasante para Haystack Limits.
+    Tarantula Style: % Retained Individual (Updated to match Excel screenshot)
     """
     fig = go.Figure()
+
+    # Límites exactos Excel (Líneas Azules Punteadas)
+    # 2" a 1": 0-0
+    # 3/4": 0-20
+    # 1/2" a #4: 4-20
+    # #8 a #16: 0-12
+    # #30 a #50: 4-20
+    # #100: 0-10
+    # #200: 0-0
     
-    # CONVERTIR RETENIDO INDIVIDUAL A PASANTE ACUMULADO
-    # Asumimos que retenidos_vals suma 100 (o aprox)
-    # Pasante[i] = 100 - (Acumulado Retenido hasta i)
-    # Pero retenidos_vals suele venir ordenado de mayor a menor tamiz?
-    # Vamos a recalcular pasante desde 0 (si es retenido individual)
-    # Pasante N = 100 - sum(ret[0]...ret[N])
+    # Crear vectores de límites "escalonados" visualmente
+    # Pero para simplificar en plotly usaremos lineas directas
+    # Mapeo manual aproximado a la visual del Excel
     
-    acumulados = []
-    curr = 0
-    for val in retenidos_vals:
-        curr += val
-        acumulados.append(curr)
-        
-    pasante_vals = [max(0, 100 - x) for x in acumulados]
+    lim_sup = [0, 0, 0, 20, 20, 20, 20, 12, 12, 20, 20, 10, 0] # Extendiendo a 13 valores
+    lim_inf = [0, 0, 0, 0, 4, 4, 4, 0, 0, 4, 4, 0, 0]
     
-    # LÍMITES CALIBRADOS DEL EXCEL (Haystack Limits)
-    # Mapeo por nombre de tamiz (aprox)
-    limites_excel = {
-        '2"': (100, 100), '50mm': (100, 100),
-        '1 1/2"': (100, 100), '37.5mm': (100, 100),
-        '1"': (100, 100), '25mm': (100, 100),
-        '3/4"': (95, 100), '19mm': (95, 100),
-        '1/2"': (75, 90), '12.5mm': (75, 90),
-        '3/8"': (55, 75), '9.5mm': (55, 75),
-        '#4': (38, 50), '4.75mm': (38, 50),
-        '#8': (30, 42), '2.36mm': (30, 42),
-        '#16': (22, 34), '1.18mm': (22, 34),
-        '#30': (16, 30), '0.6mm': (16, 30),
-        '#50': (5, 15), '0.3mm': (5, 15),
-        '#100': (0, 7), '0.15mm': (0, 7),
-        '#200': (0, 4), '0.075mm': (0, 4)
-    }
+    # Ajustar longitud a tamices input
+    n = len(tamices_nombres)
+    lim_sup = lim_sup[:n]
+    lim_inf = lim_inf[:n]
     
-    # Construir vectores de límites alineados con tamices_nombres
-    lim_sup = []
-    lim_inf = []
-    labels_clean = []
-    
-    for t in tamices_nombres:
-        # Limpieza simple de etiqueta para matchear
-        key = t.replace('Nº', '#').strip()
-        if key in limites_excel:
-            inf, sup = limites_excel[key]
-            lim_inf.append(inf)
-            lim_sup.append(sup)
-        else:
-            # Default amplio si no matchea
-            lim_inf.append(0)
-            lim_sup.append(100)
-    
-    # Área Aceptable (Túnel Tarántula)
     fig.add_trace(go.Scatter(
-        x=tamices_nombres + tamices_nombres[::-1],
-        y=lim_sup + lim_inf[::-1],
-        fill='toself',
-        fillcolor='rgba(200, 200, 200, 0.4)',
-        line=dict(color='rgba(100,100,100,0.2)'),
-        name='Banda Tarántula (Excel)',
-        hoverinfo="skip"
+        x=tamices_nombres, y=lim_sup,
+        mode='lines', name='Limits',
+        line=dict(color='blue', width=1, dash='dash'),
+        hoverinfo='skip'
     ))
-    
     fig.add_trace(go.Scatter(
-        x=tamices_nombres,
-        y=pasante_vals,
-        mode='lines+markers',
-        name='Tu Mezcla (% Pasante)',
-        line=dict(color=COLOR_PRIMARIO, width=3),
-        marker=dict(size=8, symbol='diamond')
+        x=tamices_nombres, y=lim_inf,
+        mode='lines',
+        line=dict(color='blue', width=1, dash='dash'),
+        showlegend=False, hoverinfo='skip'
+    ))
+
+    # Curva Real (Roja con Diamantes)
+    fig.add_trace(go.Scatter(
+        x=tamices_nombres, y=retenidos_vals,
+        mode='lines+markers', name='Percent Retained, % vol',
+        line=dict(color='red', width=3),
+        marker=dict(symbol='diamond', size=8, color='red')
     ))
 
     fig.update_layout(
-        title=dict(text="Curva Tarántula (% Pasante Acumulado)", font=dict(size=20)),
-        xaxis=dict(title="Tamiz"),
-        yaxis=dict(title="% Que Pasa", range=[0, 105]),
+        title=dict(text="Tarantula", font=dict(size=20, family="Times New Roman")),
+        xaxis=dict(
+            title="Sieve",
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True,
+            tickangle=-90
+        ),
+        yaxis=dict(
+            title="Percent Retained, % vol",
+            range=[0, 25],
+            showgrid=True, gridcolor='black', linecolor='black', mirror=True
+        ),
         template="plotly_white",
-        hovermode="x unified"
+        width=800, height=400,
+        legend=dict(
+            x=0.6, y=0.9,
+            bordercolor="black", borderwidth=1, bgcolor="white"
+        )
     )
     return fig
 
