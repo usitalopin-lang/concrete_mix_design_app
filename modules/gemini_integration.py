@@ -172,7 +172,6 @@ DATOS DE LA MEZCLA A ANALIZAR (Pre-procesados por Python):
 
     # 3. Datos Generales de Diseño
     prompt += f"\n\n[DATOS DE DISEÑO]"
-    prompt += f"\n- APLICACIÓN / DESTINO: {datos_mezcla.get('aplicacion', 'No especificada')}"
     
     if 'resistencia' in fj:
         res = fj['resistencia']

@@ -89,16 +89,6 @@ PESOS_OPTIMIZACION = {
     'power45': 0.20     # Ajuste a la curva ideal matemática (objetivo base)
 }
 
-# --- Opciones de Aplicación / Elemento ---
-APLICACIONES_HORMIGON = [
-    "Pavimento / Piso Industrial",
-    "Estructural Bombeable",
-    "Estructural No Bombeable (Grúa/Capacho)",
-    "Pilotes / Fundaciones",
-    "Prefabricado Liviano (Bloques/Soleras)",
-    "Prefabricado Pesado (Vigas/Dovelas)"
-]
-
 TMN_OPCIONES = [9.5, 12.5, 19.0, 25.0, 37.5, 50.0]
 
 # Generar lista de opciones desde el diccionario
