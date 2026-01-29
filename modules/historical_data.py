@@ -219,18 +219,26 @@ def unir_dosificacion_resistencia(df_dos, df_res):
     # es más bien una agregación.
     
     # --- CORRECCIÓN DE CRUCE ---
-    # En Dosificaciones: Grado='GB', Res='20' -> Necesitamos 'GB20'
-    # En Resistencia: Grado='GB20'
+    # Normalizamos ambas tablas para tener 'grado_join' = Letra + Numero (ej. G30)
     
-    # Crear 'grado_join' en Dosificaciones concatenando columnas
-    # Aseguramos que resistencia no tenga decimales (.0) si es string
-    res_str = df_dos['resistencia'].astype(str).str.replace(r'\.0$', '', regex=True)
-    df_dos['grado_join'] = df_dos['grado'] + res_str
+    # 1. Preparar Dosificaciones
+    # Limpiamos parte numérica de resistencia (ej 30.0 -> 30)
+    res_str_dos = df_dos['resistencia'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+    # Si el grado ya contiene el número (ej G30), lo dejamos. Si es solo G, concatenamos.
+    # Heurística: Si grado termina en dígito, ya está listo.
+    df_dos['grado_join'] = df_dos.apply(
+        lambda x: str(x['grado']).strip().upper() if str(x['grado']).strip()[-1].isdigit() 
+        else str(x['grado']).strip().upper() + str(x['resistencia']).replace('.0','').strip(), 
+        axis=1
+    )
+
+    # 2. Preparar Resistencias
+    # Misma lógica: Si Grado es 'G' y existe 'resistencia_mpa', concatenamos?
+    # Usualmente en Historial de Resistencias, la columna 'Grado' suele ser el código completo 'G30'.
+    # Pero por seguridad, aplicamos limpieza.
+    df_res['grado_join'] = df_res['grado'].astype(str).str.strip().str.upper()
     
-    # En Resistencia el grado ya viene listo
-    df_res['grado_join'] = df_res['grado']
-    
-    # Normalización para cruce robusto (Mayúsculas y sin espacios)
+    # Normalización general
     for col in ['grado_join', 'docilidad']:
         if col in df_res.columns:
             df_res[col] = df_res[col].astype(str).str.strip().str.upper()

@@ -40,18 +40,25 @@ st.sidebar.header("🔍 Filtros")
 
 # 1. Grado
 grados = sorted(df_final['grado'].unique().tolist()) if 'grado' in df_final.columns else []
-sel_grado = st.sidebar.multiselect("Grado", grados, default=grados[:1] if grados else None)
+default_grado = ['G'] if 'G' in grados else None
+sel_grado = st.sidebar.multiselect("Grado", grados, default=default_grado)
 
-# 2. TMN
-# Convertir a str para sort seguro, luego si se quiere numérico se maneja, pero para filtro str está ok visualmente
+# 2. Resistencia Especificada (Nuevo)
+resistencias = sorted(df_final['resistencia'].astype(str).unique().tolist()) if 'resistencia' in df_final.columns else []
+# Limpiar ".0" visualmente
+resistencias_clean = sorted(list(set([r.replace('.0','') for r in resistencias])))
+sel_resistencia = st.sidebar.multiselect("Resistencia (MPa)", resistencias_clean)
+
+# 3. TMN
+# Convertir a str para sort seguro
 tmns = sorted(df_final['tmn'].astype(str).unique().tolist()) if 'tmn' in df_final.columns else []
 sel_tmn = st.sidebar.multiselect("TMN (mm)", tmns)
 
-# 3. Docilidad
+# 4. Docilidad
 docilidades = sorted(df_final['docilidad'].astype(str).unique().tolist()) if 'docilidad' in df_final.columns else []
 sel_docilidad = st.sidebar.multiselect("Docilidad (cm)", docilidades)
 
-# 4. Fracción Defectuosa (FD)
+# 5. Fracción Defectuosa (FD)
 fds = sorted(df_final['fraccion_defectuosa'].astype(str).unique().tolist()) if 'fraccion_defectuosa' in df_final.columns else []
 sel_fd = st.sidebar.multiselect("Fracción Defectuosa (%)", fds)
 
@@ -60,6 +67,11 @@ df_view = df_final.copy()
 
 if sel_grado:
     df_view = df_view[df_view['grado'].isin(sel_grado)]
+
+if sel_resistencia:
+    # Filtramos la columna 'resistencia' comparando strings limpios
+    # (resistencia original puede ser float o str con/sin decimal)
+    df_view = df_view[df_view['resistencia'].astype(str).str.replace(r'\.0$', '', regex=True).isin(sel_resistencia)]
 
 if sel_tmn:
     # Filtrar comparando strings
