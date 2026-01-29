@@ -437,87 +437,62 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
 
     # 1. Resistencia media
     fd_mpa, fd_kgcm2 = calcular_resistencia_media(resistencia_fc, desviacion_std, fraccion_def)
-    MAX_AC_DURABILIDAD = 0.55 # Valor seguro por defecto
-    max_ac_durabilidad = MAX_AC_DURABILIDAD
-    if condicion_exposicion == "Hormigón a la vista":
-        max_ac_durabilidad = 0.50
-    elif condicion_exposicion == "Sometido a congelación":
-        max_ac_durabilidad = 0.45
-    elif condicion_exposicion == "En contacto con sulfatos":
-        max_ac_durabilidad = 0.45 # Mismo que congelación para simplificar o según norma
     
-    # --- LÓGICA DE CÁLCULO MAGALLANES (FAURY-JOISEL CORREGIDO) ---
-    # Orden: 1. Cemento (por resistencia) -> 2. A/C -> 3. Agua
-    
-    # 1. Cantidad de Cemento (Base)
-    # C = Fd (kg/cm2) * 0.95 (Factor Eficiencia Magallanes)
+    # --- LÓGICA DE CÁLCULO MAGALLANES (FAURY-JOISEL EXPLICITO) ---
+    # Pasos definidos por usuario:
+    # 1. Cemento (por resistencia)
+    # 2. A/C (Input usuario o Tablas)
+    # 3. Agua (Calculada)
+    # 4. Aire (Input usuario o Tabla)
+    # 5. Aridos (Volumen restante)
+
+    # 1. Cantidad de Cemento
+    # C = Fd (kg/cm2) * Factor Eficiencia
+    # NOTA: Se eliminan mínimos normativos "duros" (ej. 250kg). Se informan como recomendación.
     factor_eficiencia = 0.95
-    cemento_calculado = calcular_cemento(fd_kgcm2, factor_eficiencia)
+    cemento = calcular_cemento(fd_kgcm2, factor_eficiencia)
     
     # 2. Razón A/C
-    if manual_ac is not None:
+    # Se prioriza el input manual (si existe), si no, se busca en tabla por resistencia
+    if manual_ac is not None and manual_ac > 0:
         ac_ratio = manual_ac
     else:
-        ac_ratio_resistencia = obtener_razon_ac(fd_kgcm2)
-        # Aplicar límites de durabilidad
-        ac_ratio = min(ac_ratio_resistencia, max_ac_durabilidad)
+        ac_ratio = obtener_razon_ac(fd_kgcm2)
 
     # 3. Agua de Amasado
     # A = C * A/C
-    cemento = cemento_calculado
+    # NOTA: Esta es el agua NETA de mezclado.
     agua_amasado = cemento * ac_ratio
     
-    # Ajuste: Verificar si el agua es muy baja para la trabajabilidad requerida (Check Slump)
-    # Si el agua calculada es insuficiente para el slump, Faury puro diría "sube cemento y agua manteniendo A/C"
-    # O "usa aditivos". Por ahora, mantenemos la lógica estricta de Magallanes.
-    
-    # Reducción de agua por aditivos (si aplica)
-    # En este método, si usamos aditivos reductores, bajamos el agua calculada?
-    # O asumimos que el A/C ya considera eso?
-    # Usualmente: Agua Real = Agua Teorica * (1 - Reduccion)
-    # Y luego recalculamos Cemento Real = Agua Real / AC ? No, eso rompe el Cemento Base.
-    # SI bajamos agua por aditivo y mantenemos Cemento -> Baja A/C -> Sube resistencia (Mejor)
-    # O Mantenemos A/C -> Baja Cemento (Ahorro).
-    
-    # Lógica conservadora: Mantener Cemento calculado por resistencia.
-    # Aplicar aditivo para reducir agua -> Baja A/C efectiva -> Mayor seguridad.
-    
-    if aditivos_config:
-        reduccion_agua_pct = 0.0
-        for ad in aditivos_config:
-            nombre_ad = ad['nombre'].lower()
-            if "superplastificante" in nombre_ad or "hiperplastificante" in nombre_ad:
-                reduccion_agua_pct += 0.20
-            elif "plastificante" in nombre_ad:
-                reduccion_agua_pct += 0.08
-        
-        # Aplicar reducción al agua
-        agua_amasado = agua_amasado * (1.0 - reduccion_agua_pct)
-        
-        # Recalcular A/C efectivo (será menor, es decir mejor)
-        ac_ratio_final = agua_amasado / cemento
-        # Pero reportamos el diseño con este nuevo equilibrio.
-        ac_ratio = ac_ratio_final
-
-
-    # 5. Aire ocluido (volumen)
+    # 4. Aire (Litros)
     if manual_aire_litros is not None:
-        aire = manual_aire_litros
+        aire_lt = manual_aire_litros
     else:
-        aire = obtener_aire_ocluido(tmn, aire_porcentaje)
+        # Si no se da litros, se usa el porcentaje o tabla
+        # Si aire_porcentaje > 0, usar eso. Si no, tabla.
+        if aire_porcentaje > 0:
+             aire_lt = aire_porcentaje * 10
+        else:
+             aire_lt = obtener_aire_ocluido(tmn, 0)
     
-    # 6. Compacidad (Ajustada por aditivos) -> Previo calculo Aditivos
-    # Calcular Aditivos primero para tener volumen
-    aditivos_res = []
+    # Aditivos y reducción de agua?
+    # El usuario pide flujo estricto: Cemento -> A/C -> Agua.
+    # Si hay aditivos reductores, ¿cambian el A/C? 
+    # Usualmente, si fijas A/C y Cemento, el agua es fija. El aditivo te daría más docilidad.
+    # O si fijas Cemento y quieres cierta docilidad, el aditivo baja el agua y el A/C.
+    # PERO, el usuario dijo "Output segun calculo: cantidad cemento, agua amasado".
+    # Asumiremos el cálculo directo matemático A = C * A/C.
+    
+    # Cálculo de Volumen de Aditivos (para restar al volumen de áridos)
     volumen_aditivos_lt = 0.0
-    
+    aditivos_res = []
     if aditivos_config:
         for ad in aditivos_config:
             nombre = ad['nombre']
             dosis_pct = ad['dosis_pct']
             densidad = ad['densidad_kg_lt']
             
-            # CUIDADO: La dosis suele ser % del peso de cemento
+            # Dosis % del peso de cemento
             peso_ad = cemento * (dosis_pct / 100.0)
             vol_ad = peso_ad / densidad
             
@@ -529,13 +504,33 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
             })
             volumen_aditivos_lt += vol_ad
 
-    # 6. Compacidad (Ajustada por aditivos)
-    volumen_disponible_solidos = 1000.0 - agua_amasado - aire - volumen_aditivos_lt
-    compacidad = volumen_disponible_solidos / 1000.0
-    compacidad = max(compacidad, 0.55) 
+    # 5. Compacidad / Volumen Áridos
+    # Volumen disponible para áridos = 1000 - V_agua - V_aire - V_cemento - V_aditivos
+    vol_cemento = cemento / (densidad_cemento / 1000) # kg / (kg/m3 * 1000?) No, kg / (kg/m3) = m3 -> *1000 = Litros
+    vol_cemento_lt = cemento / densidad_cemento * 1000
     
-    # 7. Porcentaje volumétrico de cemento
-    c_vol = calcular_porcentaje_cemento_volumen(cemento, compacidad, densidad_cemento)
+    vol_agua_lt = agua_amasado
+    vol_aire_lt = aire_lt
+    
+    vol_aridos_aprente_lt = 1000.0 - vol_cemento_lt - vol_agua_lt - vol_aire_lt - volumen_aditivos_lt
+    
+    # Compacidad z (Volumen Solidos / 1000)
+    # Solidos = Cemento + Aridos
+    # z = (Vol_Cemento_lt + Vol_Aridos_lt) / 1000
+    # z = (1000 - Agua - Aire) / 1000
+    compacidad = (vol_cemento_lt + vol_aridos_aprente_lt) / 1000.0
+    
+    # % Volumen Absoluto Cemento (c)
+    # c = Vol_Cemento / (Vol_Cemento + Vol_Aridos) = Vol_Cemento / (z*1000)
+    c_vol = vol_cemento_lt / (compacidad * 1000.0)
+    
+    # Referencias de Durabilidad (Solo informativo)
+    referencias = {
+        'min_cemento_norma': min_cemento_durabilidad,
+        'max_ac_norma': max_ac_durabilidad,
+        'cumple_cemento': cemento >= min_cemento_durabilidad,
+        'cumple_ac': ac_ratio <= max_ac_durabilidad
+    }
     
     # 8. Proporciones volumétricas
     num_aridos = len(aridos)
@@ -666,5 +661,6 @@ def disenar_mezcla_faury(resistencia_fc: float, desviacion_std: float,
         'granulometria_mezcla': [round(v, 1) for v in mezcla_granulometria],
         'banda_trabajo': [(round(inf, 1), round(sup, 1)) for inf, sup in banda_trabajo],
         'aditivos': aditivos_res,
-        'volumen_aditivos': round(volumen_aditivos_lt, 2)
+        'volumen_aditivos': round(volumen_aditivos_lt, 2),
+        'referencias_durabilidad': referencias # Agregamos referencias normativas
     }

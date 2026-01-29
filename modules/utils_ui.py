@@ -214,20 +214,30 @@ def sidebar_inputs():
         "Asentamiento",
         key="asentamiento"
     )
-    
+
     tmn = st.sidebar.selectbox(
         "Tamaño Máximo Nominal (mm)",
         options=TMN_OPCIONES,
         key="tmn",
         help="Tamaño de la partícula de árido más grande en la mezcla."
     )
+
+    # NUEVO: Inputs Manuales de Diseño (Magallanes)
+    st.sidebar.markdown("#### ⚙️ Parámetros de Diseño")
+    razon_ac_manual = st.sidebar.number_input(
+        "Razón A/C Objetivo",
+        min_value=0.20, max_value=1.50,
+        value=0.50, step=0.01, format="%.2f",
+        key="razon_ac_manual",
+        help="Razón Agua/Cemento a utilizar en el diseño."
+    )
     
-    aire_porcentaje = st.sidebar.number_input(
-        "Aire incorporado adicional (%)",
-        min_value=0.0, max_value=8.0,
-        step=0.5,
-        key="aire_porcentaje",
-        help="Aire atrapado intencionalmente para mejorar la durabilidad (ciclos hielo-deshielo)."
+    aire_litros_manual = st.sidebar.number_input(
+        "Aire Total (Litros)",
+        min_value=0.0, max_value=100.0,
+        value=10.0, step=1.0,
+        key="aire_litros_manual",
+        help="Volumen total de aire (atrapado + incorporado) en litros/m3."
     )
     
     st.sidebar.markdown("---")
@@ -313,7 +323,8 @@ def sidebar_inputs():
         'consistencia': consistencia,
         'asentamiento': asentamiento,
         'tmn': tmn,
-        'aire_porcentaje': aire_porcentaje,
+        'razon_ac_manual': razon_ac_manual,
+        'aire_litros_manual': aire_litros_manual,
         'tipo_cemento': tipo_cemento,
         'densidad_cemento': densidad_cemento,
         'condicion_exposicion': condicion_exposicion,

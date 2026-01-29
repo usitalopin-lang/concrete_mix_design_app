@@ -66,9 +66,12 @@ with tab1:
                     tmn=inputs['tmn'],
                     densidad_cemento=inputs['densidad_cemento'],
                     aridos=aridos,
-                    aire_porcentaje=inputs['aire_porcentaje'],
+                    aire_porcentaje=inputs.get('aire_porcentaje', 0), # Backward legacy
                     condicion_exposicion=inputs['condicion_exposicion'],
-                    aditivos_config=inputs['aditivos_config']
+                    aditivos_config=inputs['aditivos_config'],
+                    # NUEVOS ARGS MAGALLANES
+                    manual_ac=inputs.get('razon_ac_manual'),
+                    manual_aire_litros=inputs.get('aire_litros_manual')
                 )
                 
                 # Análisis Shilstone
