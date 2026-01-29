@@ -248,7 +248,8 @@ with tab4:
                 st.plotly_chart(fig, use_container_width=True)
             
             with tab_tar:
-                fig = crear_grafico_tarantula_interactivo(TAMICES_ASTM, res['mezcla_retenido'])
+                tmn_val = st.session_state.datos_completos.get('tmn', 25.0)
+                fig = crear_grafico_tarantula_interactivo(TAMICES_ASTM, res['mezcla_retenido'], tmn_val)
                 st.plotly_chart(fig, use_container_width=True)
             
             with tab_hay:
@@ -257,7 +258,9 @@ with tab4:
             
             with tab_shil:
                 sf = res['shilstone_factors']
-                fig = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'])
+                # Crear evaluación 'dummy' mínima para que la función gráfica funcione
+                eval_dummy = {'zona': 'N/A', 'descripcion': 'Optimización', 'calidad': 'N/A'}
+                fig = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'], eval_dummy)
                 st.plotly_chart(fig, use_container_width=True)
 
 with tab5:

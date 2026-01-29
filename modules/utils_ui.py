@@ -34,6 +34,12 @@ def inicializar_estado():
 
     if 'aridos_config' not in st.session_state:
         st.session_state.aridos_config = []
+        
+    if 'analisis_ia' not in st.session_state:
+        st.session_state.analisis_ia = None
+        
+    if 'res_opt' not in st.session_state:
+        st.session_state.res_opt = None
 
 def sidebar_inputs():
     """Renderiza los inputs comunes del Sidebar (Proyecto, Materiales)."""
