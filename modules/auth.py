@@ -11,8 +11,7 @@ import json
 from modules import database
 from streamlit_cookies_manager import EncryptedCookieManager
 
-# Inicializar cookie manager (solo una vez)
-@st.cache_resource
+# Cookie manager instance (no se puede cachear porque es un widget)
 def get_cookie_manager():
     """Obtiene una instancia del gestor de cookies."""
     return EncryptedCookieManager(
