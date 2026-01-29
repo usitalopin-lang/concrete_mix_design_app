@@ -23,6 +23,27 @@ with st.spinner("Cargando bases de datos históricas..."):
     df_dos = cargar_dosificaciones()
     df_res = cargar_resistencias()
 
+# Filtros de Período y Configuración Base (Globales)
+st.sidebar.markdown("### 📅 Configuración Global")
+
+# Filtro de Período (Global)
+today = pd.Timestamp.now().date()
+default_start = today - pd.Timedelta(days=365) # Último año por defecto
+periodo = st.sidebar.date_input(
+    "Período de Análisis", 
+    value=(default_start, today),
+    format="DD/MM/YYYY"
+)
+
+# Filtro de Edad de Ensayo (Global)
+# Primero obtenemos las edades disponibles en la base de datos
+edades_disp = sorted(df_res['edad_dias'].dropna().unique().astype(int).tolist()) if not df_res.empty and 'edad_dias' in df_res.columns else [7, 28]
+# Default: 28 días si existe, sino todo
+default_edad = [28] if 28 in edades_disp else None
+sel_edad = st.sidebar.multiselect("Edad de Ensayo (días)", edades_disp, default=default_edad)
+
+st.sidebar.markdown("---")
+
 if df_dos.empty:
     st.error("❌ No se pudo cargar la planilla de Dosificaciones.")
     st.stop()
@@ -31,12 +52,25 @@ if df_res.empty:
     st.warning("⚠️ No se pudo cargar Resistencias. Mostrando solo recetas.")
     df_final = df_dos
 else:
-    # Unir
-    df_final = unir_dosificacion_resistencia(df_dos, df_res)
-    st.success(f"✅ Datos cruzados: {len(df_final)} recetas analizadas con historial.")
+    # Unir con FILTROS
+    # Manejo de fechas: st.date_input devuelve una tupla (start, end) pero a veces solo start si no se completa la selección
+    fecha_ini, fecha_fin = None, None
+    if isinstance(periodo, tuple) and len(periodo) == 2:
+        fecha_ini, fecha_fin = periodo
+        
+    df_final = unir_dosificacion_resistencia(
+        df_dos, 
+        df_res, 
+        filtro_edad=sel_edad,
+        fecha_inicio=fecha_ini,
+        fecha_fin=fecha_fin
+    )
+    
+    msg_edad = f" | Edad: {sel_edad} días" if sel_edad else " | Todas las edades"
+    st.success(f"✅ Datos cruzados: {len(df_final)} recetas en el período seleccionado{msg_edad}.")
 
-# Filtros
-st.sidebar.header("🔍 Filtros")
+# Filtros Específicos
+st.sidebar.header("🔍 Filtros Específicos")
 
 # 1. Grado
 grados = sorted(df_final['grado'].unique().tolist()) if 'grado' in df_final.columns else []

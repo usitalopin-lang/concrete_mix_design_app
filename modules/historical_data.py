@@ -203,13 +203,48 @@ def cargar_aridos_historico():
         st.error(f"Error cargando Áridos: {e}")
         return pd.DataFrame()
 
-def unir_dosificacion_resistencia(df_dos, df_res):
+def unir_dosificacion_resistencia(df_dos, df_res, filtro_edad=None, fecha_inicio=None, fecha_fin=None):
     """
     Une Dosificaciones con su Historial de Resistencia.
     Estrategia de Cruce: Class Matching (Grado + TMN + Docilidad)
+    
+    Args:
+        filtro_edad (list): Lista de edades (días) a considerar.
+        fecha_inicio (date): Fecha inicial para filtrar ensayos.
+        fecha_fin (date): Fecha final para filtrar ensayos.
     """
     if df_dos.empty or df_res.empty:
         return pd.DataFrame()
+        
+    # --- FILTRADO PREVIO (EDAD Y PERIODO) ---
+    # Filtrar df_res antes de agrupar para que los promedios reflejen la selección
+    
+    # 1. Filtro de Edad
+    if filtro_edad:
+        # Aseguramos que edad_dias sea numérico para comparar
+        if 'edad_dias' in df_res.columns:
+            # Convertir a numeric, ignorar errores
+            s_edad = pd.to_numeric(df_res['edad_dias'], errors='coerce')
+            # Filtrar
+            # Convertir filtro_edad a int por si vienen strings
+            edades_validas = [int(e) for e in filtro_edad]
+            df_res = df_res[s_edad.isin(edades_validas)]
+            
+    # 2. Filtro de Fechas (Periodo)
+    if fecha_inicio and fecha_fin:
+        if 'fecha_ensayo' in df_res.columns:
+            df_res['fecha_ensayo'] = pd.to_datetime(df_res['fecha_ensayo'], errors='coerce')
+            # Filtrar rango
+            mask_fecha = (df_res['fecha_ensayo'].dt.date >= fecha_inicio) & \
+                         (df_res['fecha_ensayo'].dt.date <= fecha_fin)
+            df_res = df_res[mask_fecha]
+            
+    if df_res.empty:
+         # Si el filtro dejó vacío el historial, retornamos las recetas solas (sin stats)
+         # Ojo: si retornamos df_dos directo, no tendrá las columnas de stats y podría romper algo.
+         # Mejor dejar que siga el flujo y stats saldrán NaN.
+         pass
+
     
     # Crear claves de cruce
     # En este caso, queremos ver para cada RECETA (row de df_dos),
