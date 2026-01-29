@@ -290,7 +290,7 @@ with tab4:
                 ))
                 fig_mat.update_layout(
                     xaxis=dict(title="Trabajabilidad →", range=[0, 1], showgrid=False),
-                    yaxis=dict(title="Cohesión ↑", range=[0, 1], showgrid=False),
+                    yaxis=dict(title="Cohesión →", range=[0, 1], showgrid=False),
                     width=400, height=400, margin=dict(l=40, r=20, t=20, b=40),
                     showlegend=False,
                     plot_bgcolor='white'
