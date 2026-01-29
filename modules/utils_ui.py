@@ -460,6 +460,20 @@ def input_aridos_ui():
                     gran_def = []
                     for tamiz in TAMICES_ASTM:
                         gran_def.append(gran_leida.get(tamiz, 0.0))
+                    
+                    # CORRECCIÓN AUTOMÁTICA: Backfill con 100 antes del primer 100
+                    # Si un material pasa 100% por un tamiz, debe pasar 100% por todos los tamices más grandes
+                    primer_100_idx = -1
+                    for idx, val in enumerate(gran_def):
+                        if val >= 99.5:  # Tolerancia para considerar como 100%
+                            primer_100_idx = idx
+                            break
+                    
+                    if primer_100_idx > 0:
+                        # Rellenar todos los valores anteriores con 100
+                        for idx in range(primer_100_idx):
+                            if gran_def[idx] < 99.5:  # Solo si no es ya 100
+                                gran_def[idx] = 100.0
 
             # TRUCO: Usar key dependiente de sel_cat y sel_muestra_idx para forzar refresco
             # Si cambiamos de muestra, el sufijo cambia, y los defaults se recargan
