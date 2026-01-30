@@ -215,19 +215,16 @@ with tab3:
             )
             st.plotly_chart(fig_p45, use_container_width=True)
 
-    with tab4:
-        st.subheader("🧬 Optimización Matemática (Iowa Method)")
-        
-        from modules.utils_ui import render_expert_guide
-        render_expert_guide()
-        
-        if not st.session_state.datos_completos or 'aridos' not in st.session_state.datos_completos:
+with tab4:
+    st.subheader("🧬 Optimización Matemática (Iowa Method)")
+    
+    from modules.utils_ui import render_expert_guide
+    render_expert_guide()
+    
+    if not st.session_state.datos_completos or 'aridos' not in st.session_state.datos_completos:
         st.info("Calcula primero un diseño en la pestaña 'Entrada Datos'")
     else:
         # Usar datos VIVOS del sidebar (aridos) en lugar de los guardados en el último cálculo
-        # Esto permite optimizar sin tener que calcular Faury primero si solo se quiere jugar con áridos
-        grans = [a['granulometria'] for a in aridos]
-        
         grans = [a['granulometria'] for a in aridos]
         
         # Validación de datos antes de optimizar
