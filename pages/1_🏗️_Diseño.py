@@ -467,7 +467,7 @@ with tab4:
                     st.markdown("""
                     **Teoría de Fuller (Power 0.45)**
                     
-                    Es la "línea de máxima densidad". Una curva que se pega a esta línea azul logra el empaquetamiento más compacto posible de las piedras y arena.
+                    Es la "línea de máxima densidad". Una curva que se pega a esta línea **verde** logra el empaquetamiento más compacto posible de las piedras y arena.
                     *   **Beneficio:** Menos huecos = Menos pasta de cemento necesaria para llenarlos = **Ahorro de dinero y mayor resistencia.**
                     *   **Zona Amarilla:** Muestra dónde te sobra o te falta material respecto a la perfección matemática.
                     """)
