@@ -651,3 +651,38 @@ def sidebar_user_info():
         st.sidebar.markdown(f"👤 **{st.session_state.get('user_name', 'Usuario')}**")
         if st.sidebar.button("Cerrar Sesión"):
             logout()
+
+def render_expert_guide():
+    """Renderiza el expander informativo con la guía de selección de estrategias."""
+    with st.expander("🎓 Guía de Experto: ¿Qué curva debo usar?", expanded=False):
+        st.markdown("""
+        **🏗️ Selección de Estrategia según Aplicación**
+        
+        Esta aplicación incluye los motores de optimización más avanzados del mundo. Elige tu herramienta según el hormigón y el método constructivo que vas a utilizar:
+
+        #### 1. 🏭 Prefabricados Secos (Adoquines, Soleras, Bloques)
+        *   **Herramienta:** Power 45 / Fuller
+        *   **Meta:** Máxima Densidad / Empaquetamiento.
+        *   **Por qué:** Estas máquinas "vibran y prensan" mezclas muy secas (Cono 0). Necesitas que los áridos encajen perfectamente (como un tetris) para que el bloque tenga resistencia inmediata y no se desmorone al desmoldar.
+        *   **Shilstone:** Busca la Zona I (Rocky) o la frontera inferior de la Zona II, con bajo contenido de mortero.
+
+        #### 2. 🛣️ Pavimentos Slipform (Moldaje Deslizante / Tren Pavimentador)
+        *   **Herramienta:** Tarantula Curve (Tyler Ley) / Illinois Tollway
+        *   **Meta:** Estabilidad de Borde y "Green Strength".
+        *   **Por qué:** Para máquinas de alto rendimiento (Wirtgen/Gomaco), el hormigón debe ser "tixotrópico": fluido al vibrar, pero sólido al instante (en segundos) para que el borde no se caiga al pasar la máquina.
+        *   **Ideal:** Si tu curva entra en la "Caja Tarántula" o banda de Illinois, garantizas que el pavimento no se deforme (Edge Slump).
+
+        #### 3. 👷 Pavimentos Manuales (Moldes Fijos) y Pisos Industriales
+        *   **Herramienta:** Shilstone (Zona II Alta)
+        *   **Meta:** Acabado Superficial ("Finishability") y respuesta a la cercha.
+        *   **Por qué:** A diferencia del Slipform, aquí el hormigón está contenido por moldes fijos. La prioridad no es que se sostenga solo, sino que tenga suficiente "crema" (arena media + pasta) para que la cercha vibratoria cierre los poros y el platacho deje una superficie lisa sin esfuerzo excesivo.
+        *   **Advertencia:** No uses la estrategia Slipform aquí; te quedará una mezcla muy áspera ("huesuda") y difícil de terminar a mano.
+
+        #### 4. 🏢 Hormigón Bombeable y Edificación (Docilidad > 10cm)
+        *   **Herramienta:** Shilstone (Coarseness Factor Chart)
+        *   **Meta:** Reología y Lubricación de Tubería.
+        *   **Por qué:** Para bombear, la física cambia: necesitas una capa de mortero que lubrique las paredes del tubo para que la piedra deslice.
+        *   **Objetivo:** Apunta al Centro de la ZONA II (Transfer Zone).
+        *   **⚠️ Cuidado:** Si caes en Zona I (Abajo/Izquierda), tendrás segregación y bloquearás la bomba (mucha piedra, poca crema).
+        *   **⚠️ Cuidado:** Si caes en Zona III (Arriba), será pegajoso, demandará mucha agua y podría fisurarse.
+        """)
