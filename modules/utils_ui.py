@@ -505,7 +505,8 @@ def input_aridos_ui():
             # Valores por defecto base
             from config import MAPEO_COLUMNAS_EXCEL, TAMICES_ASTM
             nombre_def, drs_def, drsss_def, abs_def, tipo_def = "Árido", 2650.0, 2700.0, 1.0, "Grueso"
-            gran_def = [0.0] * 12 # Default vacío
+            nombre_def, drs_def, drsss_def, abs_def, tipo_def = "Árido", 2650.0, 2700.0, 1.0, "Grueso"
+            gran_def = [0.0] * 13 # Match TAMICES_ASTM length
             
             # Si se selecciona algo del catálogo, sobrescribir defaults
             if datos: # Ya tenemos los datos exactos (sea único o elegido)
@@ -550,15 +551,38 @@ def input_aridos_ui():
                     # Y llenar con 0 debajo de un 0 de forma coherente.
                     # Pasando[i] >= Pasando[i+1]
                     for idx_f in range(len(gran_def) - 2, -1, -1):
-                        # El tamiz i debe dejar pasar AL MENOS cuanto el i+1 (más pequeño)
-                        gran_def[idx_f] = max(gran_def[idx_f], gran_def[idx_f + 1])
+                        # Monotonicidad Básica: Retenido Acumulado no puede disminuir -> Pasante no puede aumentar
+                        # Pasante[i] >= Pasante[i+1] (Tamiz i es más grande que i+1)
+                        # Si dato[i+1] es mayor que dato[i], algo anda mal. 
+                        # Asumimos que el dato "presente" manda. 
+                        # CORRECCION: Si tengo 100 en #4 (idx 6) y 0 en 3/8 (idx 5), #4 manda? No, 3/8 manda.
+                        # PERO aquí queremos rellenar huecos.
+                        
+                        val_actual = gran_def[idx_f]
+                        val_menor = gran_def[idx_f + 1]
+                        
+                        # Estrategia de Relleno:
+                        # 1. Si el tamiz más grande tiene 0 y el pequeño tiene valor -> Asumir que el grande es 100? No necesariamente.
+                        # 2. Si el tamiz pequeño tiene 0 y el grande tiene valor -> El pequeño es 0? Sí, físico.
+                        pass
+
+                    # Lógica Robusta de Relleno 
+                    # 1. Propagar 100% hacia arriba (Tamices grandes)
+                    first_100_idx = -1
+                    for idx_f in range(len(gran_def) - 1, -1, -1): # Desde el más fino al grande
+                         if gran_def[idx_f] >= 99.0:
+                             first_100_idx = idx_f
+                             # Propagar a todos los tamices MÁS GRANDES (índices menores)
+                             for prev_idx in range(idx_f):
+                                 gran_def[prev_idx] = 100.0
                     
-                    # Garantizar 100% en los más grandes si alguno al medio es 100
+                    # 2. Propagar 0% hacia abajo (Tamices finos)
+                    # Si un tamiz grande es 0 (y no es el 2"), los menores son 0
                     for idx_f in range(len(gran_def)):
-                        if gran_def[idx_f] >= 99.5:
-                            # Todos los anteriores (más grandes) deben ser 100
-                            for prev_idx in range(idx_f):
-                                gran_def[prev_idx] = 100.0
+                        if gran_def[idx_f] <= 0.5:
+                             # Propagar 0 a los que siguen (índices mayores = más finos)
+                             for next_idx in range(idx_f + 1, len(gran_def)):
+                                 gran_def[next_idx] = 0.0
 
             # TRUCO: Usar key dependiente de sel_cat y sel_muestra_idx para forzar refresco
             # Si cambiamos de muestra, el sufijo cambia, y los defaults se recargan
