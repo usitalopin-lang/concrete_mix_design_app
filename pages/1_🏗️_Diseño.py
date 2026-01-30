@@ -380,6 +380,61 @@ with tab4:
             props_str = ", ".join([f"Árido {i+1}: **{p:.1f}%**" for i, p in enumerate(res['proporciones'])])
             st.markdown(f"**Proporciones Sugeridas:** {props_str}")
             
+            # --- BOTÓN APLICAR OPTIMIZACIÓN ---
+            if st.button("✅ Aceptar y Aplicar Optimización al Diseño", type="primary", use_container_width=True):
+                # 1. Obtener peso total de áridos del diseño original
+                faury_orig = st.session_state.datos_completos['faury_joisel']
+                cantidades = faury_orig['cantidades_kg_m3']
+                
+                peso_aridos_total = 0.0
+                for k, v in cantidades.items():
+                    if k not in ['cemento', 'agua', 'aire', 'aditivo']:
+                        peso_aridos_total += v
+                
+                # 2. Calcular nuevas masas
+                nuevas_cantidades = cantidades.copy()
+                # Limpiar referencias viejas a árido 1, 2, etc si existen, o usar nombre
+                # Asumimos que el orden en 'aridos' coincide con res['proporciones']
+                
+                for i, prop in enumerate(res['proporciones']):
+                    arido_data = aridos[i]
+                    # Nombre clave usado en faury (probablemente simplificado o nombre directo)
+                    # En faury_joisel.py se usa el nombre del arido como key
+                    nombre_arido = arido_data['nombre'] 
+                    nuevas_masa = peso_aridos_total * (prop / 100.0)
+                    nuevas_cantidades[nombre_arido] = nuevas_masa
+                
+                # 3. Actualizar Session State
+                st.session_state.datos_completos['faury_joisel']['cantidades_kg_m3'] = nuevas_cantidades
+                st.session_state.datos_completos['faury_joisel']['granulometria_mezcla'] = res['mezcla_granulometria']
+                st.session_state.datos_completos['shilstone']['factors'] = res['shilstone_factors'] # Update shil data if structure allows
+                
+                # Recalcular Shilstone completo para consistencia
+                from modules.shilstone import calcular_shilstone_completo
+                # Necesitamos dsss_arena ponderada nueva
+                dsss_arena = 2650 
+                # (Simplificación: tomamos la primera arena o promedio)
+                for a in aridos:
+                    if a['tipo'] != 'Grueso':
+                        dsss_arena = a.get('DRSSS', 2650)
+                        break
+                        
+                nuevo_shil = calcular_shilstone_completo(
+                    granulometria_mezcla=res['mezcla_granulometria'],
+                    cemento=faury_orig['cemento']['cantidad'],
+                    peso_aridos_total=peso_aridos_total,
+                    dsss_arena=dsss_arena,
+                    agua_neta=faury_orig['agua_cemento']['agua_total'],
+                    densidad_cemento=faury_orig['cemento']['densidad'],
+                    aditivos=faury_orig.get('volumen_aditivos', 0),
+                    aire=faury_orig['aire']['volumen']
+                )
+                st.session_state.datos_completos['shilstone'] = nuevo_shil
+                
+                st.session_state.res_opt = None # Limpiar resultado opt
+                st.success("✅ Optimización aplicada. Ve a la pestaña 'Resultados' para ver el informe actualizado.")
+                st.rerun()
+
             # Gráficos Iowa Suite + Normativos
             tab_p45, tab_tar, tab_hay, tab_shil, tab_c33, tab_nsw, tab_il = st.tabs(["Power 45", "Tarantula", "Haystack", "Shilstone", "C33 & Individual", "NSW", "Illinois Tollway"])
             
@@ -407,21 +462,61 @@ with tab4:
                     rmse=rmse_opt
                 )
                 st.plotly_chart(fig, use_container_width=True)
+                
+                with st.expander("ℹ️ ¿Qué es Power 45?"):
+                    st.markdown("""
+                    **Teoría de Fuller (Power 0.45)**
+                    
+                    Es la "línea de máxima densidad". Una curva que se pega a esta línea azul logra el empaquetamiento más compacto posible de las piedras y arena.
+                    *   **Beneficio:** Menos huecos = Menos pasta de cemento necesaria para llenarlos = **Ahorro de dinero y mayor resistencia.**
+                    *   **Zona Amarilla:** Muestra dónde te sobra o te falta material respecto a la perfección matemática.
+                    """)
             
             with tab_tar:
                 tmn_val = st.session_state.datos_completos.get('tmn', 25.0)
                 fig = crear_grafico_tarantula_interactivo(TAMICES_ASTM, res['mezcla_retenido'], tmn_val)
                 st.plotly_chart(fig, use_container_width=True)
+                
+                with st.expander("ℹ️ ¿Qué es la Tarántula?"):
+                    st.markdown("""
+                    **Curva Tarántula (Dr. Tyler Ley)**
+                    
+                    Es una evolución moderna para pavimentos. No busca la densidad máxima, sino la **trabajabilidad**.
+                    *   **Cuerpo (Arena Gruesa + Gravilla):** Debe estar dentro de la "caja" azul para asegurar cohesión.
+                    *   **Patas (Arena Fina):** Permite cierta flexibilidad en los finos, crucial para el terminado superficial.
+                    *   **Cabeza (Grava Gruesa):** Controla el esqueleto estructural.
+                    """)
             
             with tab_hay:
                 fig = crear_grafico_haystack_interactivo(TAMICES_ASTM, res['mezcla_retenido'])
                 st.plotly_chart(fig, use_container_width=True)
+
+                with st.expander("ℹ️ ¿Qué es Haystack (Pajar)?"):
+                    st.markdown("""
+                    **Distribución en "Pajar" (Haystack)**
+                    
+                    Es un chequeo visual simple para evitar "baches" (gaps) o "picos" excesivos en la granulometría de cada tamiz individual.
+                    *   Una buena mezcla debe parecer un "cerro" suave o un pajar, sin saltos bruscos entre un tamiz y el siguiente.
+                    *   Los límites rojos indican máximos y mínimos recomendados por normativa (ACI/ASTM) para cada tamaño.
+                    """)
             
             with tab_shil:
                 sf = res['shilstone_factors']
                 eval_dummy = {'zona': 'N/A', 'descripcion': 'Optimización', 'calidad': 'N/A'}
                 fig = crear_grafico_shilstone_interactivo(sf['cf'], sf['wf'], eval_dummy)
                 st.plotly_chart(fig, use_container_width=True)
+
+                with st.expander("ℹ️ ¿Qué es Shilstone?"):
+                    st.markdown("""
+                    **Diagrama de Factor de Cohesión (Coarseness Factor Chart)**
+                    
+                    Es el mapa definitivo para predecir cómo se comportará el concreto en obra.
+                    *   **Eje X (Coarseness Factor):** ¿Cuánta piedra tengo vs. cuánta arena?
+                    *   **Eje Y (Workability Factor):** ¿Cuánta "crema" (mortero) tengo para lubricar esa piedra?
+                    *   **Zona II (Ideal):** El punto dulce. Mezcla bombeable, terminable y resistente.
+                    *   **Zona I (Gap):** Faltan piedras intermedias, riesgo de segregación.
+                    *   **Zona IV (Sandy):** Mucha arena, mezcla pegajosa y alta demanda de agua.
+                    """)
 
             with tab_c33:
                 # Datos individuales y C33 ...
