@@ -333,12 +333,15 @@ def optimizar_agregados(granulometrias: List[List[float]],
     Returns:
         Diccionario con resultados de la optimización
     """
-    # Validar inputs
+    # Validar y determinar número real de agregados
     if not granulometrias:
         return {'exito': False, 'mensaje': 'No se proporcionaron granulometrías'}
     
-    num_agregados = min(len(granulometrias), num_agregados)
-    granulometrias = granulometrias[:num_agregados]
+    num_agregados = len(granulometrias)
+    # Limitar por densidades si vienen
+    if densidades and len(densidades) < num_agregados:
+        num_agregados = len(densidades)
+        granulometrias = granulometrias[:num_agregados]
     
     # Generar curva ideal Power 45
     tamices, ideal = generar_curva_ideal_power45(tmn)
@@ -400,6 +403,7 @@ def optimizar_agregados(granulometrias: List[List[float]],
     mejor_resultado = None
     mejor_fun = float('inf')
     
+    error_msg = "No se pudo converger en ningún punto de inicio."
     for x0_candidato in puntos_inicio:
         try:
             res_candidato = minimize(
@@ -415,7 +419,8 @@ def optimizar_agregados(granulometrias: List[List[float]],
             if res_candidato.fun < mejor_fun:
                 mejor_fun = res_candidato.fun
                 mejor_resultado = res_candidato
-        except Exception:
+        except Exception as e:
+            error_msg = str(e)
             continue
             
     # Usar el mejor resultado encontrado
@@ -423,11 +428,11 @@ def optimizar_agregados(granulometrias: List[List[float]],
     
     # Fallback si todo falla
     if resultado is None:
-        return {'exito': False, 'mensaje': 'Fallo crítico en optimización multi-start'}
+        return {'exito': False, 'mensaje': f'Fallo crítico en optimización: {error_msg}'}
 
     try:
         # Verificar éxito del mejor intento
-        if resultado.success or resultado.fun < 1e9: # Criterio laxo, si mejoró algo es bueno
+        if resultado is not None and (resultado.success or resultado.fun < 1e9):
             # Calcular mezcla óptima
             proporciones_optimas = list(resultado.x)
             

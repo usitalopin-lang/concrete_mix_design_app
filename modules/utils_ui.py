@@ -431,11 +431,11 @@ def input_aridos_ui():
     nombres_unicos = sorted(list(set([str(a['Nombre']).strip() for a in aridos_cat if a.get('Nombre')])))
     opciones_cat = ["Personalizado"] + nombres_unicos
     
-    for i in range(num_aridos):
-        with cols[i]:
-            st.markdown(f"#### Árido {i+1}")
+    for i_arido in range(num_aridos):
+        with cols[i_arido]:
+            st.markdown(f"#### Árido {i_arido+1}")
             # Selectbox para elegir del catálogo (Nombre Familia)
-            sel_cat = st.selectbox("📂 Catálogo", options=opciones_cat, key=f"cat_arido_{i}")
+            sel_cat = st.selectbox("📂 Catálogo", options=opciones_cat, key=f"cat_arido_{i_arido}")
             
             # Lógica para seleccionar MUESTRA específica si hay múltiples
             datos = None
@@ -479,23 +479,23 @@ def input_aridos_ui():
                     # Crear etiquetas para identificar las muestras
                     # Buscamos columnas distintivas: id_muestra (N° Muestra), Identificacion, Lote, Fecha
                     opciones_muestra = []
-                    for idx, c in enumerate(coincidencias):
+                    for idx_m, c_m in enumerate(coincidencias):
                         # Intentar construir un label útil
                         label_parts = []
-                        if c.get('id_muestra'): label_parts.append(str(c['id_muestra'])) # Prioridad 1: N° Muestra
-                        if c.get('Identificacion'): label_parts.append(str(c['Identificacion']))
-                        elif c.get('Lote'): label_parts.append(str(c['Lote']))
+                        if c_m.get('id_muestra'): label_parts.append(str(c_m['id_muestra'])) # Prioridad 1: N° Muestra
+                        if c_m.get('Identificacion'): label_parts.append(str(c_m['Identificacion']))
+                        elif c_m.get('Lote'): label_parts.append(str(c_m['Lote']))
                         
-                        if c.get('Fecha'): label_parts.append(str(c['Fecha']))
+                        if c_m.get('Fecha'): label_parts.append(str(c_m['Fecha']))
                         
                         if not label_parts:
-                            label = f"Muestra #{idx+1}"
+                            label = f"Muestra #{idx_m+1}"
                         else:
                             label = " - ".join(label_parts)
                         
                         opciones_muestra.append(label)
                     
-                    sel_muestra = st.selectbox("🔖 Lote / Muestra", opciones_muestra, key=f"sel_muestra_{i}")
+                    sel_muestra = st.selectbox("🔖 Lote / Muestra", opciones_muestra, key=f"sel_muestra_{i_arido}")
                     sel_muestra_idx = opciones_muestra.index(sel_muestra)
                     datos = coincidencias[sel_muestra_idx]
                 elif len(coincidencias) == 1:
@@ -546,23 +546,23 @@ def input_aridos_ui():
                     for tamiz in TAMICES_ASTM:
                         gran_def.append(gran_leida.get(tamiz, 0.0))
                     
-                    # CORRECCIÓN AUTOMÁTICA: Backfill con 100 antes del primer 100
-                    # Si un material pasa 100% por un tamiz, debe pasar 100% por todos los tamices más grandes
-                    primer_100_idx = -1
-                    for idx, val in enumerate(gran_def):
-                        if val >= 99.5:  # Tolerancia para considerar como 100%
-                            primer_100_idx = idx
-                            break
+                    # CORRECCIÓN AUTOMÁTICA: Asegurar Granulometría Monótona (100% arriba de un 100%)
+                    # Y llenar con 0 debajo de un 0 de forma coherente.
+                    # Pasando[i] >= Pasando[i+1]
+                    for idx_f in range(len(gran_def) - 2, -1, -1):
+                        # El tamiz i debe dejar pasar AL MENOS cuanto el i+1 (más pequeño)
+                        gran_def[idx_f] = max(gran_def[idx_f], gran_def[idx_f + 1])
                     
-                    if primer_100_idx > 0:
-                        # Rellenar todos los valores anteriores con 100
-                        for idx in range(primer_100_idx):
-                            if gran_def[idx] < 99.5:  # Solo si no es ya 100
-                                gran_def[idx] = 100.0
+                    # Garantizar 100% en los más grandes si alguno al medio es 100
+                    for idx_f in range(len(gran_def)):
+                        if gran_def[idx_f] >= 99.5:
+                            # Todos los anteriores (más grandes) deben ser 100
+                            for prev_idx in range(idx_f):
+                                gran_def[prev_idx] = 100.0
 
             # TRUCO: Usar key dependiente de sel_cat y sel_muestra_idx para forzar refresco
             # Si cambiamos de muestra, el sufijo cambia, y los defaults se recargan
-            sufijo = f"{i}_{sel_cat}_{sel_muestra_idx}" 
+            sufijo = f"{i_arido}_{sel_cat}_{sel_muestra_idx}" 
             
             nombre = st.text_input("Nombre", nombre_def, key=f"nombre_{sufijo}")
             
@@ -594,25 +594,25 @@ def input_aridos_ui():
                 elif tipo == "Fino": gran_def = [100, 100, 100, 100, 100, 100, 94, 74, 53, 37, 21, 8]
             
             granulometria = []
-            cols_per_row = 7  # 7 columnas para que quepan 13 en 2 filas (7 y 6)
+            cols_per_row = 4  # Menos columnas para que se vean bien los números
             
             # Asegurar que gran_def tenga la longitud correcta
             while len(gran_def) < len(TAMICES_ASTM):
                 gran_def.append(0.0)
 
             # Generar inputs dinámicamente
-            for i, tamiz_label in enumerate(TAMICES_ASTM):
-                if i % cols_per_row == 0:
+            for idx_t, tamiz_label in enumerate(TAMICES_ASTM):
+                if idx_t % cols_per_row == 0:
                     c_gran = st.columns(cols_per_row)
                 
-                with c_gran[i % cols_per_row]:
+                with c_gran[idx_t % cols_per_row]:
                      val = st.number_input(
                          tamiz_label, 
                          min_value=0.0, 
                          max_value=100.0, 
-                         value=float(gran_def[i]), 
+                         value=float(gran_def[idx_t]), 
                          step=1.0, 
-                         key=f"gran_{i}_{sufijo}"
+                         key=f"gran_{idx_t}_{sufijo}"
                      )
                      granulometria.append(val)
             
