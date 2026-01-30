@@ -325,12 +325,39 @@ with tab4:
             }
 
         st.write("")
+        
+        # --- NUEVO: RESTRICCIONES DE USUARIO (Mínimos MOP/EETT) ---
+        limites_minimos = [0.0] * len(grans)
+        suma_minimos = 0.0
+        
+        with st.expander("🔓 Restricciones de Usuario (Mínimos %)", expanded=False):
+            st.caption("Define el porcentaje mínimo obligatorio para cada árido (ej. MOP exige min 40% chancado).")
+            cols_min = st.columns(len(grans))
+            for i, a in enumerate(aridos):
+                nombre = a.get('Nombre', f'Árido {i+1}')
+                with cols_min[i]:
+                    val_min = st.number_input(
+                        f"Min % {nombre}",
+                        min_value=0.0, max_value=100.0, value=0.0, step=5.0,
+                        key=f"min_restriccion_{i}"
+                    )
+                    limites_minimos[i] = val_min
+                    suma_minimos += val_min
+            
+            if suma_minimos > 100:
+                st.error(f"❌ La suma de mínimos ({suma_minimos}%) excede el 100%. Ajusta tus restricciones.")
+                datos_validos = False # Bloquear botón
+            elif suma_minimos > 80:
+                st.warning(f"⚠️ Restricciones muy altas ({suma_minimos}%). El optimizador tendrá poco margen de maniobra.")
+
+        st.write("")
         if st.button("🚀 Ejecutar Optimización de ADN", disabled=not datos_validos, use_container_width=True):
             with st.spinner("Buscando la armonía perfecta entre áridos..."):
                 res_opt = optimizar_agregados(
                     grans, 
                     tmn=st.session_state.datos_completos['tmn'],
                     densidades=densidades_opt,
+                    limites_minimos=limites_minimos,
                     **pesos_finales
                 )
                 if res_opt['exito']:

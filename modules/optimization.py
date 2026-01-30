@@ -323,6 +323,7 @@ def optimizar_agregados(granulometrias: List[List[float]],
                         num_agregados: int = 2,
                         proporciones_iniciales: Optional[List[float]] = None,
                         densidades: Optional[List[float]] = None,
+                        limites_minimos: Optional[List[float]] = None,
                         peso_haystack: float = PESOS_OPTIMIZACION['haystack'],
                         peso_tarantula: float = PESOS_OPTIMIZACION['tarantula'],
                         peso_shilstone: float = PESOS_OPTIMIZACION['shilstone'],
@@ -378,8 +379,20 @@ def optimizar_agregados(granulometrias: List[List[float]],
     # Normalizar punto inicial
     x0 = x0 * 100 / sum(x0)
     
-    # Límites: cada proporción entre 0 y 100
-    bounds = Bounds([0] * num_agregados, [100] * num_agregados)
+    # Validar límites mínimos
+    min_bounds = [0] * num_agregados
+    if limites_minimos:
+        # Asegurar longitud correcta
+        if len(limites_minimos) < num_agregados:
+            limites_minimos = limites_minimos + [0] * (num_agregados - len(limites_minimos))
+        min_bounds = limites_minimos[:num_agregados]
+        
+        # Validación básica: suma de mínimos no puede ser > 100
+        if sum(min_bounds) > 100:
+             return {'exito': False, 'mensaje': f'La suma de las restricciones mínimas ({sum(min_bounds)}%) excede el 100%.'}
+    
+    # Límites: cada proporción entre min_bound y 100
+    bounds = Bounds(min_bounds, [100] * num_agregados)
     
     # Restricción: suma = 100
     constraints = [{'type': 'eq', 'fun': restriccion_suma_100}]
