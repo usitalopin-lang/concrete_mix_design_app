@@ -167,34 +167,46 @@ def calcular_penalizacion_shilstone(mezcla_pct: List[float]) -> float:
     Returns:
         Penalización total
     """
-    retenido = calcular_retenido(mezcla_pct)
-    penalizacion = 0.0
+    # Implementación REAL de penalización por zonas Shilstone (CF vs WF)
+    # Objetivo: Mantenerse dentro de la ZONA II (y opcionalmente ZONA I)
     
-    # Fracción fina (#30 a #200) - índices 9 a 12
-    if len(retenido) > 12:
-        fraccion_fina = sum(retenido[9:13])
-    elif len(retenido) > 9:
-        fraccion_fina = sum(retenido[9:])
-    else:
-        fraccion_fina = 0
+    factores = calcular_factores_shilstone(mezcla_pct)
+    cf = factores['cf']
+    wf = factores['wf']
     
-    min_fina, max_fina = SHILSTONE_LIMITS['fraccion_fina']
-    if fraccion_fina < min_fina:
-        penalizacion += (min_fina - fraccion_fina) ** 2
-    if fraccion_fina > max_fina:
-        penalizacion += (fraccion_fina - max_fina) ** 2
+    # Límites aproximados para ZONA II (Banda de Trabajo)
+    # Basado en gráficas típicas:
+    # CF ideal entre 45 y 75
+    # WF ideal varía con CF. Ecuación aproximada de banda Trend Bar: 
+    # WF_ideal = 2.5 + 0.4 * CF (Centro aprox)
+    # Banda de ancho +/- 3 puntos es estricta, +/- 5 es aceptable.
     
-    # Fracción gruesa (3/4" a #30) - índices 3 a 9
-    if len(retenido) > 9:
-        fraccion_gruesa = sum(retenido[3:9])
-    else:
-        fraccion_gruesa = 0
+    # Penalizar desviación de CF (Coarseness Factor)
+    # Zona II empieza aprox en CF=45 y termina en CF=75
+    penalizacion_cf = 0.0
+    if cf < 45: penalizacion_cf += (45 - cf) ** 2
+    if cf > 75: penalizacion_cf += (cf - 75) ** 2
     
-    min_gruesa, _ = SHILSTONE_LIMITS['fraccion_gruesa']
-    if fraccion_gruesa < min_gruesa:
-        penalizacion += (min_gruesa - fraccion_gruesa) ** 2
+    # Penalizar desviación de WF (Workability Factor) respecto a la "Trend Bar"
+    # Trend Bar aprox para 6 sacos: WF = 8 + (0.4 * CF)
+    wf_target = 8 + (0.4 * cf)
     
-    return penalizacion
+    # Tolerancia vertical
+    tol_wf = 4.0 
+    
+    penalizacion_wf = 0.0
+    if wf > (wf_target + tol_wf):
+        penalizacion_wf = (wf - (wf_target + tol_wf)) ** 2
+    elif wf < (wf_target - tol_wf):
+        penalizacion_wf = ((wf_target - tol_wf) - wf) ** 2
+        
+    # Zona IV (Sandy) es WF muy alto
+    # Penalización extra si cae en Zona IV (WF > 45 aprox)
+    penalizacion_zona_iv = 0.0
+    if wf > 44:
+        penalizacion_zona_iv = (wf - 44) ** 3 # Penalización cúbica para expulsarlo fuerte
+        
+    return penalizacion_cf + penalizacion_wf + penalizacion_zona_iv
 
 def calcular_factores_shilstone(mezcla_pct: List[float]) -> Dict[str, float]:
     """
