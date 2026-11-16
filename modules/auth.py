@@ -8,81 +8,135 @@ import streamlit as st
 import bcrypt
 import time
 import json
+import hmac
+import hashlib
+import base64
+import datetime
 from modules import database
-from streamlit_cookies_manager import EncryptedCookieManager
+import extra_streamlit_components as stx
 
-# Cookie manager instance (se guarda en session_state para evitar duplicados en el mismo run)
-def get_cookie_manager():
-    """Obtiene una instancia del gestor de cookies evitandos duplicados."""
-    if 'cookie_manager' not in st.session_state:
-        st.session_state['cookie_manager'] = EncryptedCookieManager(
-            prefix="concrete_app_",
-            password=st.secrets.get("COOKIE_PASSWORD", "default_secret_key_change_in_production")
-        )
-    return st.session_state['cookie_manager']
+# Nombre de la cookie única que guarda la sesión (JSON firmado con HMAC)
+SESSION_COOKIE = "concrete_app_session"
+SESSION_TIMEOUT = 3600  # 60 minutos de inactividad
+
+
+def _cookie_secret() -> bytes:
+    try:
+        secret = st.secrets.get("COOKIE_PASSWORD", "default_secret_key_change_in_production")
+    except Exception:
+        secret = "default_secret_key_change_in_production"
+    return str(secret).encode("utf-8")
+
+
+def _encode_session(data: dict) -> str:
+    """Serializa y firma los datos de sesión (evita que se falsifique la cookie)."""
+    payload = base64.urlsafe_b64encode(json.dumps(data).encode("utf-8")).decode("ascii")
+    sig = hmac.new(_cookie_secret(), payload.encode("ascii"), hashlib.sha256).hexdigest()
+    return f"{payload}.{sig}"
+
+
+def _decode_session(value) -> dict | None:
+    """Verifica la firma y devuelve los datos de sesión, o None si no es válida."""
+    if not value or not isinstance(value, str) or "." not in value:
+        return None
+    payload, sig = value.rsplit(".", 1)
+    expected = hmac.new(_cookie_secret(), payload.encode("ascii"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return None
+    try:
+        return json.loads(base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8"))
+    except Exception:
+        return None
+
+
+def get_cookie_manager(refresh: bool = False):
+    """
+    Obtiene el CookieManager de extra-streamlit-components.
+    El componente debe renderizarse una sola vez por ejecución del script
+    (si no, Streamlit lanza DuplicateWidgetID). restore_session_from_cookies()
+    lo crea con refresh=True al inicio de cada ejecución y el resto lo reutiliza.
+    """
+    if refresh or '_cookie_manager' not in st.session_state:
+        st.session_state['_cookie_manager'] = stx.CookieManager(key="concrete_cookie_manager")
+    return st.session_state['_cookie_manager']
+
+
+def _write_session_cookie(cookies, data: dict, key: str):
+    cookies.set(
+        SESSION_COOKIE,
+        _encode_session(data),
+        key=key,
+        expires_at=datetime.datetime.now() + datetime.timedelta(seconds=SESSION_TIMEOUT),
+    )
+
 
 def restore_session_from_cookies():
     """Restaura la sesión desde cookies si existe."""
-    cookies = get_cookie_manager()
-    
-    # Si los cookies no están listos, no bloqueamos la app (Fail-Open).
-    # Simplemente el usuario tendrá que loguearse manualmente, que es mejor que un hang.
-    if not cookies.ready():
+    try:
+        cookies = get_cookie_manager(refresh=True)
+    except Exception as e:
+        print(f"Warning: CookieManager no disponible ({e})")
         return
-        
-    # Si llegó aquí, los cookies están listos
-    
-    # Verificar si hay sesión guardada en cookies
-    if 'authenticated' in cookies and cookies['authenticated'] == 'true':
-        # Verificar expiración (60 minutos = 3600 segundos)
-        last_activity = cookies.get('last_activity', '0')
-        try:
-            last_activity_time = float(last_activity)
-            current_time = time.time()
-            session_age = current_time - last_activity_time
-            
-            # Si la sesión tiene más de 60 minutos, expirar
-            if session_age > 3600:  # 60 minutos
-                clear_session_cookies()
-                st.session_state['authenticated'] = False
-                st.warning("⏱️ Tu sesión expiró por inactividad. Por favor inicia sesión nuevamente.")
-                return
-            
-            # Sesión válida - restaurar y renovar timestamp
-            if 'authenticated' not in st.session_state or not st.session_state.get('authenticated'):
-                st.session_state['authenticated'] = True
-                st.session_state['user_email'] = cookies.get('user_email', '')
-                st.session_state['user_name'] = cookies.get('user_name', '')
-            
-            # Renovar timestamp de actividad
-            cookies['last_activity'] = str(current_time)
-            cookies.save()
-            
-        except (ValueError, TypeError):
-            # Si hay error parseando el timestamp, limpiar sesión
-            clear_session_cookies()
+
+    # Tras un logout explícito no restauramos aunque el navegador aún tenga la cookie
+    if st.session_state.get('_logged_out'):
+        return
+
+    # En la primera ejecución el componente aún no devolvió las cookies (Fail-Open):
+    # el usuario simplemente verá el login o se restaurará en el siguiente rerun.
+    data = _decode_session(cookies.get(SESSION_COOKIE))
+    if not data or not data.get('authenticated'):
+        return
+
+    try:
+        current_time = time.time()
+        session_age = current_time - float(data.get('last_activity', 0))
+
+        # Si la sesión tiene más de 60 minutos, expirar
+        if session_age > SESSION_TIMEOUT:
+            clear_session_cookies(key="cookie_delete_expired")
+            st.session_state['authenticated'] = False
+            st.warning("⏱️ Tu sesión expiró por inactividad. Por favor inicia sesión nuevamente.")
+            return
+
+        # Sesión válida - restaurar
+        if not st.session_state.get('authenticated'):
+            st.session_state['authenticated'] = True
+            st.session_state['user_email'] = data.get('user_email', '')
+            st.session_state['user_name'] = data.get('user_name', '')
+
+        # Renovar timestamp de actividad (como máximo una vez por minuto)
+        if session_age > 60:
+            data['last_activity'] = current_time
+            _write_session_cookie(cookies, data, key="cookie_set_renew")
+
+    except (ValueError, TypeError):
+        # Si hay error parseando el timestamp, limpiar sesión
+        clear_session_cookies(key="cookie_delete_invalid")
+
 
 def save_session_to_cookies(email: str, name: str):
     """Guarda la sesión en cookies."""
-    cookies = get_cookie_manager()
     # Intentamos guardar en cookies, pero si falla no bloqueamos el login
     try:
-        cookies['authenticated'] = 'true'
-        cookies['user_email'] = email
-        cookies['user_name'] = name
-        cookies['last_activity'] = str(time.time())  # Timestamp inicial
-        cookies.save()
+        st.session_state.pop('_logged_out', None)
+        cookies = get_cookie_manager()
+        _write_session_cookie(cookies, {
+            'authenticated': True,
+            'user_email': email,
+            'user_name': name,
+            'last_activity': time.time(),
+        }, key="cookie_set_login")
     except Exception as e:
         print(f"Warning: Cookies not ready for saving session ({e})")
 
-def clear_session_cookies():
+
+def clear_session_cookies(key: str = "cookie_delete"):
     """Limpia las cookies de sesión."""
-    cookies = get_cookie_manager()
     try:
-        cookies['authenticated'] = 'false'
-        cookies['user_email'] = ''
-        cookies['user_name'] = ''
-        cookies.save()
+        cookies = get_cookie_manager()
+        if cookies.get(SESSION_COOKIE) is not None:
+            cookies.delete(SESSION_COOKIE, key=key)
     except Exception:
         pass
 
@@ -176,7 +230,12 @@ def logout():
     st.session_state['user_email'] = None
     st.session_state['user_name'] = None
     
+    # Evitar que la sesión se restaure desde la cookie antes de que el navegador la borre
+    st.session_state['_logged_out'] = True
+
     # Limpiar cookies
-    clear_session_cookies()
-    
+    clear_session_cookies(key="cookie_delete_logout")
+
+    # Dar tiempo al componente para borrar la cookie en el navegador antes del rerun
+    time.sleep(0.5)
     st.rerun()
